@@ -19,31 +19,30 @@ class _ApplyNowBtnDesktop extends StatefulWidget {
 class _ApplyNowBtnDesktopState extends State<_ApplyNowBtnDesktop> {
   bool _hovered = false;
 
+  // BUG-188 — Figma: 190×60 button, radius 12, primary, 24 px label.
   @override
-  Widget build(BuildContext context) => MouseRegion(
-    cursor: SystemMouseCursors.click,
-    onEnter: (_) => setState(() => _hovered = true),
-    onExit: (_) => setState(() => _hovered = false),
-    child: GestureDetector(
+  Widget build(BuildContext context) => Material(
+    color: _hovered
+        ? Color.alphaBlend(Colors.black.withOpacity(0.15), widget.primary)
+        : widget.primary,
+    borderRadius: BorderRadius.circular(12),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onHover: (v) => setState(() => _hovered = v),
       onTap: () => context.go('/jobs'),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: EdgeInsets.symmetric(
-          horizontal: widget.isTablet ? 18.w : 22.w,
-          vertical: widget.isTablet ? 8.h : 9.h,
+      child: Container(
+        constraints: BoxConstraints(
+          minWidth: widget.isTablet ? 160.w : 190.w,
+          minHeight: widget.isTablet ? 52.h : 60.w,
         ),
-        decoration: BoxDecoration(
-          color: _hovered
-              ? Color.alphaBlend(
-              Colors.black.withOpacity(0.15), widget.primary)
-              : widget.primary,
-          borderRadius: BorderRadius.circular(8.r),
-        ),
+        alignment: Alignment.center,
+        padding: EdgeInsets.symmetric(horizontal: 24.w),
         child: Text(
           widget.label,
           style: StyleText.fontSize14Weight600.copyWith(
-            fontSize: widget.isTablet ? 11.sp : 13.sp,
-            fontWeight: FontWeight.w600,
+            fontSize: widget.isTablet ? 20.sp : 24.sp,
+            // Figma: Cairo Regular 24 white.
+            fontWeight: widget.isTablet ? FontWeight.w600 : FontWeight.w400,
             color: Colors.white,
           ),
         ),

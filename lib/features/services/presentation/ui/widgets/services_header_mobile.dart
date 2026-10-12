@@ -21,22 +21,21 @@ class _ServicesHeaderMobile extends StatelessWidget {
         : 'Bayanatz offers a range of services designed to support digital transformation initiatives within your organization.');
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
+      // Figma (iPhone): title Bold 36 70 px under the header; description
+      // Cairo Regular 16 #213D34, line height ≈ 30.
+      padding: const EdgeInsets.fromLTRB(16, 60, 16, 40),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title,
-              style: AppTextStyles.font28BlackSemiBoldCairo.copyWith(
-                  fontSize:   28.sp,
-                  fontWeight: FontWeight.w900,
-                  color:      primaryColor)),
-          SizedBox(height: 10.h),
+              style: SiteText.pageTitle(context, color: primaryColor)), // BUG-242
+          const SizedBox(height: 10),
           Text(desc,
               style: AppTextStyles.font14BlackRegularCairo.copyWith(
-                  fontSize:   13.sp,
-                  height:     1.7,
-                  fontWeight: FontWeight.w500,
-                  color:      AppColors.secondaryBlack)),
+                  fontSize:   16,
+                  height:     1.875,
+                  fontWeight: FontWeight.w400,
+                  color:      const Color(0xFF213D34))),
         ],
       ),
     );

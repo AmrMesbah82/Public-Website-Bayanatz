@@ -44,28 +44,36 @@ class _FormCard extends StatelessWidget {
     required ValueChanged<String> onLanguageChanged,
   }) {
     final bool selected = preferredLanguage == lang;
-    return GestureDetector(
+    // BUG-257: radios are focusable with Tab and announced as radio buttons.
+    return Semantics(
+      inMutuallyExclusiveGroup: true,
+      checked: selected,
+      label: displayLabel,
+      excludeSemantics: true,
+      child: InkWell(
       onTap: () => onLanguageChanged(lang),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
+      borderRadius: BorderRadius.circular(6),
+      focusColor: primaryColor.withOpacity(0.15),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 44),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width:  isMobile ? 18 : 18.w,
-              height: isMobile ? 18 : 18.w,
+              width:  18,
+              height: 18,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: selected ? primaryColor : Colors.grey.shade400,
+                  color: selected ? primaryColor : const Color(0xFF8A8A8A),
                   width: 2,
                 ),
               ),
               child: selected
                   ? Center(
                 child: Container(
-                  width:  isMobile ? 10 : 10.w,
-                  height: isMobile ? 10 : 10.w,
+                  width:  10,
+                  height: 10,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: primaryColor,
@@ -74,16 +82,17 @@ class _FormCard extends StatelessWidget {
               )
                   : null,
             ),
-            SizedBox(width: 6.w),
+            const SizedBox(width: 6),
             Text(
               displayLabel,
               style: StyleText.fontSize13Weight400.copyWith(
-                color:    selected ? Colors.black87 : Colors.black54,
-                fontSize: isMobile ? 12.sp : 13.sp,
+                color:    selected ? SiteColors.textStrong : SiteColors.description,
+                fontSize: 14.sp,
               ),
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -93,14 +102,14 @@ class _FormCard extends StatelessWidget {
     if (isMobile) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [a, SizedBox(height: 3.sp), b],
+        children: [a, const SizedBox(height: 12), b],
       );
     }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(child: a),
-        SizedBox(width: 12.w),
+        SizedBox(width: 19.w), // Figma: 19 px between the two columns
         Expanded(child: b),
       ],
     );
@@ -108,28 +117,30 @@ class _FormCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double rad = isMobile ? 12 : 12.r;
+    // Figma: radius 8 on the iPhone frame, 15 on desktop.
+    final double rad = isMobile ? 8 : 15.r;
 
-    // Figma (Contact Us, 7126:34692): "GET IN TOUCH" in capitals.
-    final String title             = _t(context, en: 'GET IN TOUCH',       ar: 'تواصل معنا');
+    // BUG-146: Title Case like every other heading / button on the site.
+    final String title             = _t(context, en: 'Get in Touch',       ar: 'تواصل معنا');
     final String prefLangLabel     = _t(context, en: 'Preferred Language', ar: 'اللغة المفضلة');
     final String firstNameLabel    = _t(context, en: 'First Name',         ar: 'الاسم الأول');
     final String lastNameLabel     = _t(context, en: 'Last Name',          ar: 'اسم العائلة');
     final String emailLabel        = _t(context, en: 'Email',              ar: 'البريد الإلكتروني');
     final String phoneLabel        = _t(context, en: 'Phone Number',       ar: 'رقم الهاتف');
     final String locationLabel     = _t(context, en: 'Location',           ar: 'الموقع');
-    final String entityNameLabel   = _t(context, en: "Entity's Name",      ar: 'اسم الجهة'); // Figma
+    // BUG-128: the one optional field says so.
+    final String entityNameLabel   = _t(context, en: "Entity's Name (Optional)", ar: 'اسم الجهة (اختياري)');
     final String entityTypeLabel   = _t(context, en: "Entity's Type",      ar: 'نوع الجهة');
     final String entitySizeLabel   = _t(context, en: "Entity's Size",      ar: 'حجم الجهة');
     final String subjectLabel      = _t(context, en: 'Subject',            ar: 'الموضوع');
     final String msgLabel          = _t(context, en: 'Message',            ar: 'الرسالة');
-    // Figma (Contact Us, 7126:34692): every text field says "Text Here".
-    final String textHere          = _t(context, en: 'Text Here',          ar: 'أدخل النص هنا');
-    final String firstNameHint     = textHere;
-    final String lastNameHint      = textHere;
-    final String entityNameHint    = textHere;
-    final String subjectHint       = textHere;
-    final String messageHint       = textHere;
+    // BUG-129: field-specific hints instead of "Text Here" everywhere.
+    final String firstNameHint     = _t(context, en: 'e.g. Ahmed',                 ar: 'مثال: أحمد');
+    final String lastNameHint      = _t(context, en: 'e.g. Hassan',                ar: 'مثال: حسن');
+    final String emailHint         = _t(context, en: 'e.g. name@company.com',      ar: 'مثال: name@company.com');
+    final String entityNameHint    = _t(context, en: 'e.g. Bayanatz',              ar: 'مثال: بيانات زي');
+    final String subjectHint       = _t(context, en: 'What is your message about?', ar: 'ما موضوع رسالتك؟');
+    final String messageHint       = _t(context, en: 'Tell us how we can help (at least 30 characters)', ar: 'أخبرنا كيف يمكننا مساعدتك (30 حرفًا على الأقل)');
     final String phoneInvalidMsg   = _t(context, en: 'Please enter a valid mobile number.', ar: 'يرجى إدخال رقم جوال صحيح.');
     final String sendLabel         = _t(context, en: 'Send',               ar: 'إرسال');
     final String selectLocation    = _t(context, en: 'Select Location',    ar: 'اختر الموقع');
@@ -181,10 +192,12 @@ class _FormCard extends StatelessWidget {
     final bool otherFieldError   =
         showOtherField && submitted && otherLanguageCtrl.text.trim().isEmpty;
 
+    // Figma form card (837 wide): padding 50 at the sides, 33 top, 42 bottom.
+    final Widget rowGap = SizedBox(height: isMobile ? 7.5.sp : 20.w);
     return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 14.w : 20.w,
-          vertical:   isMobile ? 12.h : 12.h),
+      padding: isMobile
+          ? const EdgeInsets.all(15) // Figma iPhone: padding 15, radius 8
+          : EdgeInsets.only(left: 50.w, right: 50.w, top: 33.w, bottom: 42.w),
       decoration: BoxDecoration(
           color:        Colors.white,
           borderRadius: BorderRadius.circular(rad)),
@@ -193,12 +206,12 @@ class _FormCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           // ── Title ──
+          // BUG-186: Figma "GET IN TOUCH" 26 Bold #1C1A1A.
           Text(title,
               style: StyleText.fontSize22Weight700.copyWith(
-                  fontSize:      isMobile ? 16.sp : 16.sp,
-                  color:         Colors.black,
-                  letterSpacing: 1.2)),
-          SizedBox(height: isMobile ? 8.h : 8.h),
+                  fontSize:      isMobile ? 20 : 26.sp, // Figma Bold 20 / 26
+                  color:         const Color(0xFF1C1A1A))),
+          SizedBox(height: isMobile ? 8.h : 30.w),
 
           // ─────────────────────────────────────────────────────────
           // Preferred Language
@@ -206,7 +219,7 @@ class _FormCard extends StatelessWidget {
           //   Row 2: "Other" radio  +  inline text field (same row)
           // ─────────────────────────────────────────────────────────
           _FormLabel(label: prefLangLabel),
-          SizedBox(height: 10.h),
+          SizedBox(height: isMobile ? 10.h : 8.w),
 
           // Row — all language radios + "Other" radio + inline text field in ONE flat Row
           Row(
@@ -247,7 +260,7 @@ class _FormCard extends StatelessWidget {
                         hint:          otherLangHint,
                         controller:    otherLanguageCtrl,
                         submitted:     otherFieldError,
-                        height:        36,
+                        height:        42,
                         primaryColor:  primaryColor,
                         textDirection: dir,
                         textAlign:     align,
@@ -260,43 +273,43 @@ class _FormCard extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: isMobile ? 7.5.sp : 9.h),
+          SizedBox(height: isMobile ? 7.5.sp : 20.w),
 
           // ── First Name / Last Name (mobile: stacked) ──
           _pair(
             CustomValidatedTextFieldMaster(
               label:         firstNameLabel,
+              required:      true,
               hint:          firstNameHint,
               controller:    firstNameCtrl,
               submitted:     submitted,
-              height:        36,
               primaryColor:  primaryColor,
               textDirection: dir,
               textAlign:     align,
             ),
             CustomValidatedTextFieldMaster(
               label:         lastNameLabel,
+              required:      true,
               hint:          lastNameHint,
               controller:    lastNameCtrl,
               submitted:     submitted,
-              height:        36,
               primaryColor:  primaryColor,
               textDirection: dir,
               textAlign:     align,
             ),
           ),
-          if (isMobile) SizedBox(height: 7.5.sp),
+          rowGap,
 
           // ── Email / Phone (mobile: stacked; phone keeps code+number row) ──
           _pair(
             CustomValidatedTextFieldMaster(
               label:        emailLabel,
+              required:     true,
               primaryColor: primaryColor,
-              hint: textHere,
+              hint: emailHint,
               controller:    emailCtrl,
               submitted:     submitted,
               isEmail:       true, // BUG-14
-              height:        36,
               textDirection: dir,
               textAlign:     align,
             ),
@@ -312,7 +325,7 @@ class _FormCard extends StatelessWidget {
               primaryColor:  primaryColor,
             ),
           ),
-          if (isMobile) SizedBox(height: 3.sp),
+          rowGap,
 
           // ── Location / Entity Name (mobile: stacked) ──
           _pair(
@@ -327,19 +340,19 @@ class _FormCard extends StatelessWidget {
               isMobile:     isMobile,
               primaryColor: primaryColor,
               isSearchable: true,
+              required:     true,
             ),
             CustomValidatedTextFieldMaster(
               label:         entityNameLabel,
               hint:          entityNameHint,
               controller:    entityNameCtrl,
               submitted:     false, // optional
-              height:        36,
               primaryColor:  primaryColor,
               textDirection: dir,
               textAlign:     align,
             ),
           ),
-          if (isMobile) SizedBox(height: 7.5.sp),
+          rowGap,
 
           // ── Entity Type / Entity Size (mobile: stacked) ──
           _pair(
@@ -350,6 +363,7 @@ class _FormCard extends StatelessWidget {
               items:        entityTypeItems,
               onChanged:    onEntityTypeChanged,
               submitted:    submitted, // BUG-55: required on Send → show why
+              required:     true,
               isRtl:        isRtl,
               isMobile:     isMobile,
               primaryColor: primaryColor,
@@ -361,60 +375,66 @@ class _FormCard extends StatelessWidget {
               items:        entitySizeItems,
               onChanged:    onEntitySizeChanged,
               submitted:    submitted, // BUG-55
+              required:     true,
               isRtl:        isRtl,
               isMobile:     isMobile,
               primaryColor: primaryColor,
             ),
           ),
 
-          SizedBox(height: isMobile ? 7.5.sp : 7.5.h),
+          rowGap,
 
           // ── Subject (full width) ──
           CustomValidatedTextFieldMaster(
               primaryColor:  primaryColor,
               label:         subjectLabel,
+              required:      true,
               hint:          subjectHint,
               controller:    subjectCtrl,
               submitted:     submitted,
-              height:        36,
+              height:        42,
               minLength:     10,
               textDirection: dir,
               textAlign:     align),
 
-          if (isMobile) SizedBox(height: 7.5.sp),
+          rowGap,
 
           // ── Message (full width) ──
           CustomValidatedTextFieldMaster(
               primaryColor:  primaryColor,
               label:         msgLabel,
+              required:      true,
               hint:          messageHint,
               controller:    messageCtrl,
               submitted:     submitted,
-              height:        72,
-              maxLines:      3,
+              height:        isMobile ? 96 : 84, // Figma 84
+              maxLines:      4,
               minLength:     30,
               textDirection: dir,
               textAlign:     align),
 
-          SizedBox(height: 13.h),
+          SizedBox(height: isMobile ? 13.h : 22.w),
 
-          // ── Send Button ──
+          // ── Send Button ── Figma: full width, 38 px tall, radius 4,
+          // Cairo SemiBold 24 white (44 px minimum on phones).
           SizedBox(
             width:  double.infinity,
-            height: isMobile ? 40.h : 36.h,
+            height: isMobile ? 48 : 38.w,
             child: ElevatedButton(
               onPressed: onSend,
               style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.r)),
+                      borderRadius: BorderRadius.circular(isMobile ? 8 : 4)),
                   elevation: 0),
               child: Text(sendLabel,
                   style: StyleText.fontSize16Weight600
-                      .copyWith(color: Colors.white, fontSize: 14.sp)),
+                      // QA-Oct11 #4: smaller Send label (was 24).
+                      .copyWith(color: Colors.white, fontSize: isMobile ? 15 : 18.sp,
+                          fontWeight: FontWeight.w600, height: 1.0)),
             ),
           ),
-          SizedBox(height: 7.h),
+          if (isMobile) SizedBox(height: 7.h),
         ],
       ),
     );

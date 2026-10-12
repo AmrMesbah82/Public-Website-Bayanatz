@@ -13,19 +13,17 @@ class _AboutHeaderDesktop extends StatelessWidget {
   Widget build(BuildContext context) {
     final double screenW = MediaQuery.of(context).size.width,
         contentW = _desktopContentWidth(context);
-    final double hPad = ((screenW - contentW) / 2).clamp(36.0, double.infinity);
+    final double hPad = ((screenW - contentW) / 2).clamp(16.0, double.infinity);
     final String title = _ab(model.title, isRtl).isNotEmpty
         ? _ab(model.title, isRtl)
         : (isRtl ? 'من نحن' : 'About Us');
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 36.h),
+      // Figma: title 70 px under the header, tabs 30 px under the title.
+      // QA-Oct11 #3: real vertical gap between the title and the tab row.
+      padding: EdgeInsets.only(left: hPad, right: hPad, top: 52.w, bottom: 30.w),
       child: Text(
         title,
-        style: StyleText.fontSize45Weight600.copyWith(
-          fontSize: 48.sp,
-          fontWeight: FontWeight.w700,
-          color: primaryColor,
-        ),
+        style: SiteText.pageTitle(context, color: primaryColor), // BUG-178
       ),
     );
   }

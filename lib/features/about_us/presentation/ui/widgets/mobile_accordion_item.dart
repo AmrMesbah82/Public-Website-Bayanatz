@@ -38,7 +38,7 @@ class _MobileAccordionItemState extends State<_MobileAccordionItem> {
         color: widget.isExpanded
             ? _kSurface
             : (_hovered ? hoverBg : _kSurface),
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(8), // Figma iPhone radius 8
         border: Border.all(
           color: _hovered && !widget.isExpanded
               ? widget.primaryColor.withOpacity(0.25)
@@ -57,63 +57,62 @@ class _MobileAccordionItemState extends State<_MobileAccordionItem> {
               onTap: widget.onTap,
               behavior: HitTestBehavior.opaque,
               child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                // Figma: padding 10, 48 px icon tile, title Bold 20/22.
+                padding: const EdgeInsets.all(10),
                 child: Row(
                   children: [
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      width: 38.w,
-                      height: 38.w,
+                      width: 48,
+                      height: 48,
                       decoration: BoxDecoration(
-                        color: widget.isExpanded
-                            ? widget.primaryColor
-                            : widget.secondaryColor,
-                        borderRadius: BorderRadius.circular(8.r),
+                        // Figma: the same light grey tile open or closed
+                        // (BUG-214: never the dark #2D2D2D).
+                        color: const Color(0x1A797979),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Center(
                         child: widget.tab.iconUrl.isNotEmpty
                             ? _netImg(
                           url: widget.tab.iconUrl,
-                          width: 18.sp,
-                          height: 18.sp,
+                          width: 26,
+                          height: 26,
                           fit: BoxFit.contain,
-                          // ✅ FIX: white only when expanded/selected
-                          colorFilter: widget.isExpanded
-                              ? const ColorFilter.mode(
-                              Colors.white, BlendMode.srcIn)
-                              : null,
+                          colorFilter: ColorFilter.mode(
+                              widget.primaryColor, BlendMode.srcIn),
                         )
                             : Icon(
                           Icons.image_outlined,
-                          size: 16.sp,
-                          color: widget.isExpanded
-                              ? Colors.white
-                              : AppColors.textButton,
+                          size: 24,
+                          color: widget.primaryColor,
                         ),
                       ),
                     ),
-                    SizedBox(width: 10.w),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         widget.tab.label,
                         style: StyleText.fontSize16Weight600.copyWith(
-                          fontSize: 12.sp,
+                          fontSize: 20,
+                          height: 1.1,
+                          fontWeight: FontWeight.w700,
                           color: widget.primaryColor,
                         ),
                       ),
                     ),
                     if (widget.isExpanded)
+                      // Figma: 40×20 primary chip (radius 6) with ⌃.
                       Container(
-                        width: 26.w,
-                        height: 26.w,
+                        width: 40,
+                        height: 20,
                         decoration: BoxDecoration(
                           color: widget.primaryColor,
-                          borderRadius: BorderRadius.circular(6.r),
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                        child: Icon(
+                        child: const Icon(
                           Icons.keyboard_arrow_up_rounded,
                           color: Colors.white,
-                          size: 16.sp,
+                          size: 18,
                         ),
                       ),
                   ],
@@ -123,7 +122,7 @@ class _MobileAccordionItemState extends State<_MobileAccordionItem> {
           ),
           if (widget.isExpanded)
             Padding(
-              padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 10.h),
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -143,11 +142,14 @@ class _MobileAccordionItemState extends State<_MobileAccordionItem> {
                     SizedBox(height: 10.h),
                   ],
                   if (widget.tab.tabIndex != 2)
+                    // Figma: Cairo SemiBold 14/22 grey.
                     Text(
                       widget.tab.fullText,
                       style: StyleText.fontSize13Weight400.copyWith(
-                        fontSize: 14.sp,
-                        height: 1.7,
+                        fontSize: 14,
+                        height: 22 / 14,
+                        fontWeight: FontWeight.w600,
+                        color: SiteColors.description,
                       ),
                     ),
                   if (widget.tab.tabIndex == 2)

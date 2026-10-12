@@ -18,6 +18,9 @@ import '../../controller/job_state.dart';
 import 'package:website_app/core/theme/new_theme.dart';
 import 'package:website_app/core/widgets/format_heper.dart';
 import 'package:website_app/core/widgets/format_helper.dart';
+import '../../../../../core/responsive/site_layout.dart';
+import '../../../../../core/theme/site_tokens.dart';
+import '../widgets/job_i18n.dart';
 
 part '../widgets/localization_helper.dart';
 part '../widgets/filter_tab.dart';
@@ -26,7 +29,10 @@ part '../widgets/info_item.dart';
 part '../widgets/view_job_btn.dart';
 
 const Color _kGreen      = Color(0xFF2D8C4E);
-const Color _kGreenLight = Color(0xFFE8F5EE);
+// Imports used only from part files — referenced here so an IDE
+// "Optimize Imports" cannot drop them.
+const Type _kKeepSkillsRow = JobSkillsRow;
+const Color _kKeepTokens = SiteColors.primary;
 const Color _kDivider    = Color(0xFFDDE8DD);
 
 // ─── Helper: parse hex color from Firebase branding ──────────────────────────
@@ -93,8 +99,9 @@ class _JobListingsPageState extends State<JobListingsPage> {
     }
 
     final items = keys.map((key) {
-      String display = key;
-      if (isAr) {
+      // BUG-217: Arabic name from admin › Departments (Name_Ar) first.
+      String display = jobDepartment(context, key, isAr);
+      if (isAr && display == key) {
         // Try exact match first, then case-insensitive fallback
         display = _kDeptAr[key] ??
             _kDeptAr.entries
@@ -125,8 +132,9 @@ class _JobListingsPageState extends State<JobListingsPage> {
     // (≈4 px). Same 16 px side margin as the other pages.
     final double screenW = MediaQuery.sizeOf(context).width;
     final bool isPhone = screenW < 600;
-    final double contentW =
-        isPhone ? screenW - 32 : (339.w * 4) + (12.w * 3);
+    // Same content column as the header / footer (was 1392.w — wider than
+    // the window at 1440 px).
+    final double contentW = SiteLayout.contentWidth(context);
 
     // ✅ Wrap with HomeCmsCubit BlocBuilder for dynamic background color
     return BlocBuilder<HomeCmsCubit, HomeCmsState>(
@@ -220,9 +228,9 @@ class _JobListingsPageState extends State<JobListingsPage> {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  SizedBox(height: 40.h),
+                                  SizedBox(height: isPhone ? 60 : 52.w),
                                   SizedBox(
-                                    width: isPhone ? screenW : 1015.w,
+                                    width: double.infinity,
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.center,
                                       children: [
@@ -232,65 +240,80 @@ class _JobListingsPageState extends State<JobListingsPage> {
                                             child: Text(
                                               l.heroTitle,
                                               textAlign: l.isAr ? TextAlign.right : TextAlign.left,
-                                              style: StyleText.fontSize14Weight400.copyWith(
-                                                fontSize:48.sp,
-                                                fontWeight: FontWeight.w700,
-                                                color: primaryColor,
-                                              ),
+                                              // BUG-242 / BUG-178: shared page-title style
+                                              // (Jobs used a 48–55 px display size).
+                                              style: SiteText.pageTitle(context, color: primaryColor),
                                             ),
                                           ),
                                         ),
-                                        SizedBox(height: 32.h),
+                                        SizedBox(height: isPhone ? 20 : 42.w),
                                         Center(
                                           child: SizedBox(
                                             width: contentW,
+                                            // BUG-218: the filter WRAPS onto a second line —
+                                            // every department reachable with mouse, wheel,
+                                            // keyboard or touch (it was a cut-off scroll row).
+                                            // BUG-204: separate white buttons, 30 px apart.
+                                            // Figma (iPhone): the chips sit in one white
+                                            // box (radius 8, padding 10, 10 px gaps).
                                             child: Container(
-                                              padding: EdgeInsets.all(6.r),
-                                              decoration: BoxDecoration(
-                                                color: Colors.white,
-                                                  borderRadius: BorderRadius.circular(6.r),
-                                              ),
+                                              padding: EdgeInsets.all(isPhone ? 10 : 0),
+                                              decoration: isPhone
+                                                  ? BoxDecoration(
+                                                      color: Colors.white,
+                                                      borderRadius: BorderRadius.circular(8))
+                                                  : null,
+                                              // QA-Oct11 #32 / #38: ONE horizontal
+                                              // row of departments that scrolls
+                                              // sideways when it does not fit.
                                               child: SingleChildScrollView(
-                                                scrollDirection: Axis.horizontal,
-                                                child: Row(
-                                                  mainAxisSize: MainAxisSize.min,
-                                                  children: [
-                                                    _FilterTab(
-                                                      label: l.allLabel,
-                                                      isSelected: _selectedDept == null,
-                                                      primary: primaryColor,
-                                                      onTap: () => setState(() => _selectedDept = null),
-                                                    ),
-                                                    ...departments.map(
-                                                          (dept) => _FilterTab(
-                                                        label: dept.display,
-                                                        isSelected: _selectedDept == dept.key,
-                                                        primary: primaryColor,
-                                                        onTap: () => setState(() => _selectedDept = dept.key),
-                                                      ),
-                                                    ),
-                                                  ],
+                                              scrollDirection: Axis.horizontal,
+                                              child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                for (final w in <Widget>[
+                                                _FilterTab(
+                                                  label: l.allLabel,
+                                                  isSelected: _selectedDept == null,
+                                                  primary: primaryColor,
+                                                  onTap: () => setState(() => _selectedDept = null),
                                                 ),
-                                              ),
+                                                ...departments.map(
+                                                      (dept) => _FilterTab(
+                                                    label: dept.display,
+                                                    isSelected: _selectedDept == dept.key,
+                                                    primary: primaryColor,
+                                                    onTap: () => setState(() => _selectedDept = dept.key),
+                                                  ),
+                                                ),
+                                                ])
+                                                  Padding(
+                                                    padding: EdgeInsetsDirectional.only(
+                                                        end: isPhone ? 10 : 30.w), // Figma 30
+                                                    child: w,
+                                                  ),
+                                              ],
+                                            ),
+                                            ),
                                             ),
                                           ),
                                         ),
-                                        SizedBox(height: 28.h),
+                                        SizedBox(height: isPhone ? 35 : 40.w),
                                         Center(
                                           child: SizedBox(
                                             width: contentW,
                                             child: Text(
                                               l.sectionTitle,
                                               textAlign: l.isAr ? TextAlign.right : TextAlign.left,
-                                              style: StyleText.fontSize22Weight700.copyWith(
-                                                fontSize: 22.sp,
-                                                fontWeight: FontWeight.w700,
-                                                color: const Color(0xFF797979) /* Figma grey */,
-                                              ),
+                                              // Figma: Cairo Bold 36 grey.
+                                              style: SiteText.sectionTitle(context,
+                                                  color: SiteColors.description)
+                                                  // Figma: Bold 36 desktop, Bold 20 iPhone.
+                                                  .copyWith(fontSize: isPhone ? 20 : 36.sp),
                                             ),
                                           ),
                                         ),
-                                        SizedBox(height: 16.h),
+                                        SizedBox(height: isPhone ? 16 : 8.w),
                                         if (state is JobListingError)
                                           Center(
                                             child: SizedBox(
@@ -387,13 +410,13 @@ class _JobListingsPageState extends State<JobListingsPage> {
                                                       l: l,
                                                       primary: primaryColor,
                                                     ),
-                                                    SizedBox(height: 16.h),
+                                                    SizedBox(height: isPhone ? 16.h : 25.w),
                                                   ],
                                                 ],
                                               ),
                                             ),
                                           ),
-                                        SizedBox(height: 64.h),
+                                        SizedBox(height: isPhone ? 64.h : 20.w),
                                       ],
                                     ),
                                   ),

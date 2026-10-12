@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 import 'package:website_app/core/theme/new_theme.dart';
 
 import '../../../../../core/main_widgets/app_footer.dart';
@@ -27,6 +28,10 @@ import '../../../../home/presentation/controller/lang_state.dart';
 import '../../../data/models/blog_model.dart';
 import '../../controller/blog_cubit.dart';
 import '../../controller/blog_state.dart';
+import '../../../../../core/widgets/smart_network_image.dart';
+import '../../../../../core/theme/site_tokens.dart';
+import '../../../../../core/responsive/site_layout.dart';
+import '../../../../../core/utils/page_meta.dart';
 
 part '../widgets/services_helpers.dart';
 part '../widgets/mobile_body.dart';
@@ -34,6 +39,11 @@ part '../widgets/desktop_body.dart';
 part '../widgets/block_list.dart';
 part '../widgets/blog_image.dart';
 part '../widgets/blog_nav_button.dart';
+
+// BUG-251: used from part files — referenced here so an IDE
+// "Optimize Imports" cannot drop the import.
+typedef _KeepSmartNetworkImage = SmartNetworkImage;
+typedef _KeepSiteLayout = SiteLayout;
 
 // ── Fallback colors ───────────────────────────────────────────────────────────
 const Color _kFallbackPrimary   = Color(0xFF2D8C4E);
@@ -141,7 +151,7 @@ class _BlogDetailPageState extends State<BlogDetailPage> {
                             child: Center(
                               child: Text(
                                 blogState.message,
-                                style: StyleText.fontSize14Weight400.copyWith(fontFamily: 'Cairo', color: Colors.red),
+                                style: StyleText.fontSize14Weight400.copyWith(color: Colors.red),
                               ),
                             ),
                           ),
@@ -167,11 +177,80 @@ class _BlogDetailPageState extends State<BlogDetailPage> {
                             child: Center(
                               child: Text(
                                 isRtl ? 'لا توجد مقالات منشورة.' : 'No published posts.',
-                                style: StyleText.fontSize14Weight400.copyWith(fontFamily: 'Cairo', color: Colors.black54),
+                                style: StyleText.fontSize14Weight400.copyWith(color: Colors.black54),
                               ),
                             ),
                           ),
                           const AppFooter(),
+                        ],
+                      ),
+                    );
+                  }
+
+                  // BUG-252: an unknown /blog/<id> shows "Article not found"
+                  // (like /jobs/<bad id>) instead of silently opening the
+                  // first article.
+                  if (_selectedPostId != null &&
+                      !posts.any((p) => p.id == _selectedPostId)) {
+                    return Scaffold(
+                      backgroundColor: background,
+                      body: Column(
+                        children: [
+                          AppNavbar(currentRoute: '/services'),
+                          Expanded(
+                            child: ScrollWithFooter(
+                              footer: const AppFooter(),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 64),
+                                child: Center(
+                                  child: ConstrainedBox(
+                                    constraints:
+                                        const BoxConstraints(maxWidth: 560),
+                                    child: Column(
+                                      children: [
+                                        Icon(Icons.article_outlined,
+                                            size: 64, color: primary),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          isRtl
+                                              ? 'المقال غير موجود'
+                                              : 'Article not found',
+                                          textAlign: TextAlign.center,
+                                          style: SiteText.sectionTitle(context,
+                                              color: SiteColors.textStrong),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          isRtl
+                                              ? 'ربما تم نقل هذا المقال أو حذفه.'
+                                              : 'This article may have been moved or removed.',
+                                          textAlign: TextAlign.center,
+                                          style: SiteText.body(context),
+                                        ),
+                                        const SizedBox(height: 24),
+                                        ElevatedButton(
+                                          onPressed: () => context.go('/services'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: primary,
+                                            foregroundColor: Colors.white,
+                                            elevation: 0,
+                                            minimumSize: const Size(160, 48),
+                                            shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8)),
+                                          ),
+                                          child: Text(isRtl
+                                              ? 'العودة إلى الخدمات'
+                                              : 'Back to Services'),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     );
@@ -182,6 +261,14 @@ class _BlogDetailPageState extends State<BlogDetailPage> {
                         (p) => p.id == _selectedPostId,
                     orElse: () => posts.first,
                   );
+
+                  // BUG-253: the tab title names the article (after build).
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    PageMeta.setDetailTitle(
+                        GoRouterState.of(context).uri.path,
+                        _tb(selectedPost.question, isRtl));
+                  });
 
                   final double w = MediaQuery.of(context).size.width;
                   final bool isMobile = w < _BP.mobile;

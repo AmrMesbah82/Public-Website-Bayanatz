@@ -23,33 +23,46 @@ class _MobileWhyJoinTab extends StatelessWidget {
           i.isEven ? _SlideDirection.fromLeft : _SlideDirection.fromRight,
           duration: const Duration(milliseconds: 650),
           child: Padding(
-            padding: EdgeInsets.only(bottom: 24.h),
-            child: Column(
-              children: [
-                // ── SVG from Firebase (network) or fallback ────────────────
-                if (svgUrl.isNotEmpty)
-                  SvgPicture.network(
-                    svgUrl,
-                    width: 160.w,
-                    height: 140.h,
-                    fit: BoxFit.contain,
-                    placeholderBuilder: (_) =>
-                        SizedBox(width: 160.w, height: 140.h),
-                  )
-                else
-                  SizedBox(width: 160.w, height: 140.h),
-                SizedBox(height: 12.h),
-                if (text.isNotEmpty)
-                  Text(
-                    text,
-                    textAlign: TextAlign.center,
-                    style: StyleText.fontSize15Weight400.copyWith(
-                      fontSize: 11.sp,
-                      height: 1.7,
-                      color: const Color(0xFF797979) /* Figma grey */,
+            // BUG-198: compact card; the picture only when one exists.
+            // Figma (iPhone): no card — the illustration centred above the
+            // text, Cairo SemiBold 14 / 20 grey, centred; 30 px between rows.
+            padding: const EdgeInsets.only(bottom: 30),
+            child: SizedBox(
+              width: double.infinity,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  if (svgUrl.isNotEmpty) ...[
+                    Center(
+                      child: SmartNetworkImage(svgUrl, width: 200, height: 140),
                     ),
-                  ),
-              ],
+                    const SizedBox(height: 15),
+                  ],
+                  if (i > 0 && (isRtl ? item.title.ar : item.title.en).trim().isNotEmpty) ...[
+                    Text(
+                      (isRtl ? item.title.ar : item.title.en).trim(),
+                      textAlign: TextAlign.center,
+                      style: StyleText.fontSize15Weight400.copyWith(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: primary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                  ],
+                  if (text.isNotEmpty)
+                    Text(
+                      text,
+                      textAlign: TextAlign.center,
+                      style: StyleText.fontSize15Weight400.copyWith(
+                        fontSize: 14,
+                        height: 20 / 14,
+                        fontWeight: FontWeight.w600,
+                        color: SiteColors.description,
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         );

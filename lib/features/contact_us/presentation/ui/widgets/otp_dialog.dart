@@ -150,18 +150,18 @@ class _OtpDialogState extends State<_OtpDialog> {
         child: Dialog(
           backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(isMobile ? 16 : 16.r),
+            borderRadius: BorderRadius.circular(isMobile ? 16 : 21.r),
           ),
           insetPadding: EdgeInsets.symmetric(
-            horizontal: isMobile ? 24 : 36.w,
-            vertical:   isMobile ? 40 : 36.h,
+            horizontal: isMobile ? 24 : 47.w,
+            vertical:   isMobile ? 40 : 47.h,
           ),
           child: SizedBox(
-            width: isMobile ? double.infinity : 480.w,
+            width: isMobile ? double.infinity : 624.w,
             child: Padding(
               padding: EdgeInsets.symmetric(
-                horizontal: isMobile ? 24 : 32.w,
-                vertical:   isMobile ? 28 : 32.h,
+                horizontal: isMobile ? 24 : 42.w,
+                vertical:   isMobile ? 28 : 42.h,
               ),
               child: BlocBuilder<ContactOtpCubit, ContactOtpState>(
                 builder: (context, state) {
@@ -176,7 +176,7 @@ class _OtpDialogState extends State<_OtpDialog> {
                         child: IconButton(
                           tooltip: widget.isRtl ? 'إغلاق' : 'Close',
                           icon: Icon(Icons.close,
-                              size: isMobile ? 20 : 22.sp,
+                              size: isMobile ? 20 : 29.sp,
                               color: Colors.grey.shade700),
                           onPressed: () {
                             context.read<ContactOtpCubit>().reset();
@@ -188,40 +188,40 @@ class _OtpDialogState extends State<_OtpDialog> {
                       // of a blank area if the asset can't be loaded)
                       SvgPicture.asset(
                         'assets/images/mobile_code_dialog.svg',
-                        width:  isMobile ? 120 : 140.w,
-                        height: isMobile ? 100 : 120.h,
+                        width:  isMobile ? 120 : 182.w,
+                        height: isMobile ? 100 : 156.h,
                         fit:    BoxFit.contain,
                         errorBuilder: (_, __, ___) => Icon(
                           Icons.sms_outlined,
-                          size:  isMobile ? 72 : 84.sp,
+                          size:  isMobile ? 72 : 109.sp,
                           color: widget.primaryColor,
                         ),
                       ),
-                      SizedBox(height: isMobile ? 20 : 24.h),
+                      SizedBox(height: isMobile ? 20 : 31.h),
 
                       // ── Title ──
                       Text(
                         title,
                         textAlign: TextAlign.center,
                         style: StyleText.fontSize22Weight700.copyWith(
-                          fontSize:      isMobile ? 18.0 : 20.sp,
+                          fontSize:      isMobile ? 18.0 : 26.sp,
                           color:         Colors.black,
                           letterSpacing: 1.0,
                         ),
                       ),
-                      SizedBox(height: isMobile ? 8 : 10.h),
+                      SizedBox(height: isMobile ? 8 : 13.h),
 
                       // ── Description ──
                       Text(
                         desc,
                         textAlign: TextAlign.center,
                         style: StyleText.fontSize13Weight400.copyWith(
-                          fontSize: isMobile ? 12.0 : 13.sp,
+                          fontSize: isMobile ? 12.0 : 17.sp,
                           color:    Colors.grey.shade600,
                           height:   1.5,
                         ),
                       ),
-                      SizedBox(height: isMobile ? 24 : 28.h),
+                      SizedBox(height: isMobile ? 24 : 36.h),
 
                       // ── 6-Digit OTP Boxes ──
                       Directionality(
@@ -232,10 +232,10 @@ class _OtpDialogState extends State<_OtpDialog> {
                             final bool filled =
                                 _digitCtrls[i].text.isNotEmpty;
                             return Container(
-                              width:  isMobile ? 44 : 48.w,
-                              height: isMobile ? 50 : 54.h,
+                              width:  isMobile ? 44 : 62.w,
+                              height: isMobile ? 50 : 70.h,
                               margin: EdgeInsets.symmetric(
-                                  horizontal: isMobile ? 3 : 4.w),
+                                  horizontal: isMobile ? 3 : 5.2.w),
                               child: KeyboardListener(
                                 focusNode: FocusNode(),
                                 onKeyEvent: (e) => _onDigitKey(i, e),
@@ -247,7 +247,7 @@ class _OtpDialogState extends State<_OtpDialog> {
                                   maxLength:    1,
                                   style: StyleText.fontSize22Weight700
                                       .copyWith(
-                                    fontSize: isMobile ? 18.0 : 20.sp,
+                                    fontSize: isMobile ? 18.0 : 26.sp,
                                     color:    _hasError
                                         ? Colors.red
                                         : Colors.black,
@@ -263,7 +263,7 @@ class _OtpDialogState extends State<_OtpDialog> {
                                         : Colors.grey.shade50,
                                     contentPadding:
                                     EdgeInsets.symmetric(
-                                        vertical: isMobile ? 12 : 14.h),
+                                        vertical: isMobile ? 12 : 18.h),
                                     border: OutlineInputBorder(
                                       borderRadius:
                                       BorderRadius.circular(8.r),
@@ -303,19 +303,19 @@ class _OtpDialogState extends State<_OtpDialog> {
                           }),
                         ),
                       ),
-                      SizedBox(height: isMobile ? 14 : 16.h),
+                      SizedBox(height: isMobile ? 14 : 21.h),
 
                       // ── Error Message ──
                       if (_hasError)
                         Padding(
                           padding: EdgeInsets.only(
-                              bottom: isMobile ? 8 : 10.h),
+                              bottom: isMobile ? 8 : 13.h),
                           child: Text(
                             errorMsg,
                             textAlign: TextAlign.center,
                             style: StyleText.fontSize12Weight400.copyWith(
                               color:    Colors.red,
-                              fontSize: isMobile ? 11.0 : 12.sp,
+                              fontSize: isMobile ? 11.0 : 16.sp,
                             ),
                           ),
                         ),
@@ -326,16 +326,16 @@ class _OtpDialogState extends State<_OtpDialog> {
                           _formatTime(_countdown),
                           style: StyleText.fontSize13Weight400.copyWith(
                             color:    widget.primaryColor,
-                            fontSize: isMobile ? 13.0 : 14.sp,
+                            fontSize: isMobile ? 13.0 : 18.sp,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                      SizedBox(height: isMobile ? 18 : 20.h),
+                      SizedBox(height: isMobile ? 18 : 26.h),
 
                       // ── Action Button ──
                       SizedBox(
                         width:  double.infinity,
-                        height: isMobile ? 46 : 44.h,
+                        height: isMobile ? 46 : 57.h,
                         child: _canResend
                             ? ElevatedButton(
                           onPressed: _resendOtp,
@@ -352,7 +352,7 @@ class _OtpDialogState extends State<_OtpDialog> {
                             style: StyleText.fontSize16Weight600
                                 .copyWith(
                               color:    Colors.white,
-                              fontSize: isMobile ? 14.0 : 15.sp,
+                              fontSize: isMobile ? 14.0 : 20.sp,
                             ),
                           ),
                         )
@@ -387,7 +387,7 @@ class _OtpDialogState extends State<_OtpDialog> {
                                 .copyWith(
                               color: Colors.white,
                               fontSize:
-                              isMobile ? 14.0 : 15.sp,
+                              isMobile ? 14.0 : 20.sp,
                             ),
                           ),
                         ),

@@ -26,7 +26,7 @@ class _ServicesBodyMobile extends StatelessWidget {
     isRtl ? 'قراءات مهمة' : 'Important Reads';
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -34,20 +34,27 @@ class _ServicesBodyMobile extends StatelessWidget {
             delay:     const Duration(milliseconds: 80),
             direction: _SlideDirection.fromLeft,
             duration:  const Duration(milliseconds: 600),
-            child: Text(FormatHelper.capitalize(sectionTitle),
-                style: StyleText.fontSize14Weight700.copyWith(
-                    color: primaryColor,
-                    fontWeight: FontWeight.w800
-                ))
+            // Figma: Cairo SemiBold 20 / 150 % grey with the brand name in
+            // the primary colour.
+            child: _brandRich(
+              FormatHelper.capitalize(sectionTitle),
+              StyleText.fontSize14Weight700.copyWith(
+                fontSize: 20,
+                height: 1.5,
+                fontWeight: FontWeight.w600,
+                color: SiteColors.description,
+              ),
+              primaryColor,
+            ),
           ),
-          SizedBox(height: 14.h),
+          const SizedBox(height: 8),
 
           ...model.journeyItems.asMap().entries.map((e) => _Reveal(
             delay:     Duration(milliseconds: 100 + e.key * 90),
             direction: _SlideDirection.fromBottom,
             duration:  const Duration(milliseconds: 650),
             child: Padding(
-              padding: EdgeInsets.only(bottom: 10.h),
+              padding: const EdgeInsets.only(bottom: 16), // Figma 16
               child: _ServiceCardMobile(
                   item:           e.value,
                   isRtl:          isRtl,
@@ -55,26 +62,28 @@ class _ServicesBodyMobile extends StatelessWidget {
                   secondaryColor: secondaryColor),
             ),
           )),
-          SizedBox(height: 24.h),
+          const SizedBox(height: 24),
 
           _Reveal(
             delay:     const Duration(milliseconds: 80),
             direction: _SlideDirection.fromLeft,
             duration:  const Duration(milliseconds: 600),
+            // Figma: "Important Reads" Cairo SemiBold 24 primary.
             child: Text(importantReads,
                 style: StyleText.fontSize14Weight700.copyWith(
+                  fontSize: 24,
                   color: primaryColor,
-                  fontWeight: FontWeight.w800
+                  fontWeight: FontWeight.w600,
                 ))
           ),
-          SizedBox(height: 14.h),
+          const SizedBox(height: 15),
 
           ...blogs.asMap().entries.map((e) => _Reveal(
             delay:     Duration(milliseconds: 100 + e.key * 120),
             direction: _SlideDirection.fromBottom,
             duration:  const Duration(milliseconds: 650),
             child: Padding(
-              padding: EdgeInsets.only(bottom: 14.h),
+              padding: const EdgeInsets.only(bottom: 16),
               child: _BlogCardMobile(
                   post:         e.value,
                   isRtl:        isRtl,
@@ -86,6 +95,21 @@ class _ServicesBodyMobile extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Shows the brand name ("Bayanatz" / "بيانات زي") inside [text] in the
+/// primary colour (Figma iPhone "Reasons to Choose …" heading).
+Widget _brandRich(String text, TextStyle base, Color primary) {
+  final RegExp brand = RegExp(r'Bayanatz|بيانات زي');
+  final spans = <TextSpan>[];
+  int last = 0;
+  for (final m in brand.allMatches(text)) {
+    if (m.start > last) spans.add(TextSpan(text: text.substring(last, m.start)));
+    spans.add(TextSpan(text: m.group(0), style: TextStyle(color: primary)));
+    last = m.end;
+  }
+  if (last < text.length) spans.add(TextSpan(text: text.substring(last)));
+  return Text.rich(TextSpan(style: base, children: spans));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -151,20 +175,12 @@ Widget _svgBlogImage({
       width:  width,
       height: height,
       child: url.isNotEmpty
-          ? SvgPicture.network(
+          ? SmartNetworkImage( // BUG-251: raster-in-SVG safe
         url,
         width:  width,
         height: height,
-        fit:    BoxFit.fill,
-        placeholderBuilder: (_) => Container(
-          color: _kGreenLight,
-          child: Center(
-            child: CircularProgressIndicator(
-              strokeWidth: 1.5,
-              color:       primaryColor,
-            ),
-          ),
-        ),
+        fit:    BoxFit.cover,
+        fallback: Container(color: _kGreenLight),
       )
           : Container(color: _kGreenLight),
     ),

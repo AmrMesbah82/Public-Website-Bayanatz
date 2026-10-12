@@ -61,6 +61,9 @@ dependencies:
   uuid: ^4.5.3
   pdf: ^3.10.0
   printing: ^5.12.0
+  # BUG-251: read raster-in-SVG CMS images (already in pubspec.lock as a
+  # transitive dependency — `flutter pub get` needs no download).
+  http: ^1.2.2
 
 dev_dependencies:
   flutter_test:
@@ -96,6 +99,9 @@ flutter:
     - assets/drawer/
     - assets/
     - assets/images/careers/
+    # BUG-256: Cairo is bundled (google_fonts picks these files up first), so
+    # the first load no longer downloads 3 font files from fonts.gstatic.com.
+    - google_fonts/
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

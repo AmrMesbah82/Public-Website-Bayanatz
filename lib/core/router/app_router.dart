@@ -5,15 +5,28 @@ import '../main_widgets/not_found_page.dart';
 
 
 
-import '../../features/about_us/presentation/ui/pages/about_us_page.dart';
-import '../../features/careers/presentation/ui/pages/careers_page.dart';
-import '../../features/contact_us/presentation/ui/pages/contact_us_page.dart';
+// BUG-256: every page except Home is loaded on demand (deferred), so the
+// first download only carries the shell + Home instead of the whole site.
+import '../../features/about_us/presentation/ui/pages/about_us_page.dart'
+    deferred as about_page;
+import '../../features/careers/presentation/ui/pages/careers_page.dart'
+    deferred as careers_page;
+import '../../features/contact_us/presentation/ui/pages/contact_us_page.dart'
+    deferred as contact_page;
 import '../../features/home/presentation/ui/pages/home_page.dart';
-import '../../features/job/presentation/ui/pages/job_apply_page.dart';
-import '../../features/job/presentation/ui/pages/job_detail_page.dart';
-import '../../features/job/presentation/ui/pages/job_page.dart';
-import '../../features/services/presentation/ui/pages/blog_detail_page.dart';
-import '../../features/services/presentation/ui/pages/services_page.dart';
+import '../../features/job/presentation/ui/pages/job_apply_page.dart'
+    deferred as apply_page;
+import '../../features/job/presentation/ui/pages/job_apply_success_page.dart'
+    deferred as applied_page;
+import '../../features/job/presentation/ui/pages/job_detail_page.dart'
+    deferred as job_detail_page;
+import '../../features/job/presentation/ui/pages/job_page.dart'
+    deferred as jobs_page;
+import '../../features/services/presentation/ui/pages/blog_detail_page.dart'
+    deferred as blog_page;
+import '../../features/services/presentation/ui/pages/services_page.dart'
+    // A deferred import must hide every extension the library declares.
+    deferred as services_page hide BilingualTextL10n;
 
 
 
@@ -90,6 +103,54 @@ CustomTransitionPage<T> animatedPage<T>({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// DEFERRED PAGE — loads a page's code chunk once, then shows the page
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _DeferredPage extends StatefulWidget {
+  const _DeferredPage({required this.id, required this.load, required this.builder});
+
+  final String id;
+  final Future<void> Function() load;
+  final Widget Function() builder;
+
+  static final Map<String, Future<void>> _loads = {};
+
+  @override
+  State<_DeferredPage> createState() => _DeferredPageState();
+}
+
+class _DeferredPageState extends State<_DeferredPage> {
+  late final Future<void> _future =
+      _DeferredPage._loads.putIfAbsent(widget.id, widget.load);
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<void>(
+      future: _future,
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.done && !snap.hasError) {
+          return widget.builder();
+        }
+        if (snap.hasError) {
+          return const NotFoundPage();
+        }
+        return const ColoredBox(
+          color: Color(0xFFF1F2ED),
+          child: Center(
+            child: SizedBox(
+              width: 32,
+              height: 32,
+              child: CircularProgressIndicator(
+                  strokeWidth: 3, color: Color(0xFF008037)),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // ROUTER
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -135,7 +196,11 @@ class AppRouter {
           final String? section = state.uri.queryParameters['section'];
           return animatedPage(
             key:   state.pageKey,
-            child: ServicesPage(scrollTo: section),
+            child: _DeferredPage(
+              id: 'services',
+              load: () => services_page.loadLibrary(),
+              builder: () => services_page.ServicesPage(scrollTo: section),
+            ),
           );
         },
       ),
@@ -145,7 +210,11 @@ class AppRouter {
         name: 'about',
         pageBuilder: (context, state) => animatedPage(
           key:   state.pageKey,
-          child: const AboutPage(),
+          child: _DeferredPage(
+            id: 'about',
+            load: () => about_page.loadLibrary(),
+            builder: () => about_page.AboutPage(),
+          ),
         ),
       ),
 
@@ -154,7 +223,11 @@ class AppRouter {
         name: 'contact',
         pageBuilder: (context, state) => animatedPage(
           key:   state.pageKey,
-          child: const ContactPage(),
+          child: _DeferredPage(
+            id: 'contact',
+            load: () => contact_page.loadLibrary(),
+            builder: () => contact_page.ContactPage(),
+          ),
         ),
       ),
 
@@ -163,7 +236,11 @@ class AppRouter {
         name: 'careers',
         pageBuilder: (context, state) => animatedPage(
           key:   state.pageKey,
-          child: const CareersPage(),
+          child: _DeferredPage(
+            id: 'careers',
+            load: () => careers_page.loadLibrary(),
+            builder: () => careers_page.CareersPage(),
+          ),
         ),
       ),
 
@@ -172,7 +249,11 @@ class AppRouter {
         name: 'jobs',
         pageBuilder: (context, state) => animatedPage(
           key:   state.pageKey,
-          child: const JobListingsPage(),
+          child: _DeferredPage(
+            id: 'jobs',
+            load: () => jobs_page.loadLibrary(),
+            builder: () => jobs_page.JobListingsPage(),
+          ),
         ),
       ),
 
@@ -186,8 +267,12 @@ class AppRouter {
           final postId = state.pathParameters['index'];
           return animatedPage(
             key:   state.pageKey,
-            child: BlogDetailPage(
-              initialPostId: (postId == null || postId.isEmpty) ? null : postId,
+            child: _DeferredPage(
+              id: 'blog',
+              load: () => blog_page.loadLibrary(),
+              builder: () => blog_page.BlogDetailPage(
+                initialPostId: (postId == null || postId.isEmpty) ? null : postId,
+              ),
             ),
           );
         },
@@ -203,7 +288,28 @@ class AppRouter {
           final jobId = state.pathParameters['jobId'] ?? '';
           return animatedPage(
             key: state.pageKey,
-            child: JobDetailPage(jobId: jobId),
+            child: _DeferredPage(
+              id: 'job',
+              load: () => job_detail_page.loadLibrary(),
+              builder: () => job_detail_page.JobDetailPage(jobId: jobId),
+            ),
+          );
+        },
+      ),
+
+      // BUG-260: dedicated confirmation address after a successful apply.
+      GoRoute(
+        path: '/jobs/:jobId/applied',
+        name: 'job-applied',
+        pageBuilder: (context, state) {
+          final jobId = state.pathParameters['jobId'] ?? '';
+          return animatedPage(
+            key: state.pageKey,
+            child: _DeferredPage(
+              id: 'applied',
+              load: () => applied_page.loadLibrary(),
+              builder: () => applied_page.JobApplySuccessPage(jobId: jobId),
+            ),
           );
         },
       ),
@@ -215,7 +321,11 @@ class AppRouter {
           final jobId = state.pathParameters['jobId'] ?? '';
           return animatedPage(
             key: state.pageKey,
-            child: JobApplyPage(jobId: jobId),
+            child: _DeferredPage(
+              id: 'apply',
+              load: () => apply_page.loadLibrary(),
+              builder: () => apply_page.JobApplyPage(jobId: jobId),
+            ),
           );
         },
       ),

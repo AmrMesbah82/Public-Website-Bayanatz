@@ -34,22 +34,26 @@ class _DesktopBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double screenW = MediaQuery.of(context).size.width;
-    final bool isTablet = screenW < _BP.tablet;
-    final double hPad =
-    isTablet ? _tabletHPad() : _desktopHPad(screenW);
+    // Figma "iPad Vertical View" reuses the desktop components (only the
+    // column is narrower), so tablets get the desktop sizes too.
+    const bool isTablet = false;
+    final double hPad = _desktopHPad(screenW);
 
-    final double topSpace = isTablet ? 28.h : 36.h;
-    final double titleFz = isTablet ? 30.sp : 40.sp;
-    final double sectionGap = isTablet ? 18.h : 24.h;
-    final double bottomSpace = isTablet ? 40.h : 56.h;
-    final double cardPad = isTablet ? 18.w : 24.w;
+    // Figma (Careers, desktop 1800 frame): title 70 px under the header,
+    // intro card 105 px below it, statistics 30 px lower, tabs 40, content 40.
+    final double topSpace = isTablet ? 28.h : 52.w;
+    final double sectionGap = isTablet ? 18.h : 30.w;
+    final double bottomSpace = isTablet ? 40.h : 20.w;
+    final double cardPad = isTablet ? 18.w : 25.w;
     final double headerFz = isTablet ? 12.sp : 14.sp;
-    final double plainFz = isTablet ? 11.sp : 13.sp;
-    final double statValFz = isTablet ? 20.sp : 24.sp;
-    final double statDescFz = isTablet ? 9.sp : 10.sp;
-    final double tabFz = isTablet ? 11.sp : 13.sp;
-    final double tabIconSz = isTablet ? 16.sp : 18.sp;
-    final double tabIconBox = isTablet ? 32.w : 36.w;
+    // Figma: intro text Cairo Medium 24 grey, line height 43; statistics
+    // Playfair Display ExtraBold 40 primary + Cairo SemiBold 16 grey.
+    final double plainFz = isTablet ? 18.sp : 24.sp;
+    final double statValFz = isTablet ? 24.sp : 40.sp;
+    final double statDescFz = isTablet ? 14.sp : 16.sp;
+    final double tabFz = isTablet ? 17.sp : 20.sp;
+    final double tabIconSz = isTablet ? 24.r : 30.w; // Figma 30 px glyph
+    final double tabIconBox = isTablet ? 44.r : 48.w;
 
     final String overviewDesc = isRtl
         ? careersData.overview.description.ar
@@ -75,39 +79,35 @@ class _DesktopBody extends StatelessWidget {
             // so the title gets the same inset → one left edge.
             child: Padding(
               padding: EdgeInsetsDirectional.only(start: 10.sp),
+              // BUG-178: shared page-title style.
               child: Text(
                 _t('Careers', 'الوظائف', isRtl),
-                style: StyleText.fontSize45Weight600.copyWith(
-                  fontSize: titleFz,
-                  fontWeight: FontWeight.w700,
-                  color: primary,
-                ),
+                style: SiteText.pageTitle(context, color: primary),
               ),
             ),
           ),
-          SizedBox(height: sectionGap),
+          SizedBox(height: isTablet ? sectionGap : 34.w),
 
           _Reveal(
             delay: const Duration(milliseconds: 110),
             direction: _SlideDirection.fromBottom,
             duration: const Duration(milliseconds: 650),
+            // BUG-188 — Figma: white card radius 15, 24 px text, 190×60
+            // button (radius 12, 24 px label) at the bottom-right.
             child: Container(
-              padding: EdgeInsets.only(
-                left: 10.sp,
-                right: 10.sp,
-                top: 5.sp,
-                bottom: 10.sp,
-              ),
+              width: double.infinity,
+              padding: EdgeInsets.all(isTablet ? 20.w : 25.w),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(14.r),
+                borderRadius: BorderRadius.circular(15.r),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (overviewDesc.isNotEmpty)
-                    _PlainText(overviewDesc, fontSize: plainFz),
-                  SizedBox(height: 16.h),
+                    _PlainText(overviewDesc,
+                        fontSize: plainFz, height: isTablet ? 1.65 : 43 / 24),
+                  SizedBox(height: isTablet ? 16.h : 10.w),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -150,12 +150,12 @@ class _DesktopBody extends StatelessWidget {
               duration: const Duration(milliseconds: 650),
               child: Container(
                 padding: EdgeInsets.symmetric(
-                  horizontal: cardPad,
-                  vertical: isTablet ? 14.h : 18.h,
+                  horizontal: isTablet ? cardPad : 17.w, // + 8 per item = 25
+                  vertical: isTablet ? 14.h : 25.w,
                 ),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(14.r),
+                  borderRadius: BorderRadius.circular(15.r),
                 ),
                 child: Column(
                   children: () {
@@ -178,19 +178,26 @@ class _DesktopBody extends StatelessWidget {
                                   Text(
                                     isRtl ? s.title.ar : s.title.en,
                                     maxLines: 1,
-                                    style: StyleText.fontSize28Weight600.copyWith(
-                                      fontSize: statValFz,
-                                      fontWeight: FontWeight.w700,
-                                      color: primary,
-                                    ),
+                                    style: isTablet
+                                        ? StyleText.fontSize28Weight600.copyWith(
+                                            fontSize: statValFz,
+                                            fontWeight: FontWeight.w700,
+                                            color: primary,
+                                          )
+                                        : GoogleFonts.playfairDisplay(
+                                            fontSize: statValFz,
+                                            fontWeight: FontWeight.w800,
+                                            color: primary,
+                                          ),
                                   ),
-                                  SizedBox(height: 4.h),
+                                  SizedBox(height: isTablet ? 4.h : 8.w),
                                   Text(
                                     isRtl ? s.shortDescription.ar : s.shortDescription.en,
                                     style: StyleText.fontSize10Weight400.copyWith(
                                       fontSize: statDescFz,
-                                      height: 1.5,
-                                      color: Colors.black54,
+                                      height: isTablet ? 1.5 : 1.875,
+                                      fontWeight: isTablet ? null : FontWeight.w600,
+                                      color: SiteColors.description,
                                     ),
                                   ),
                                 ],
@@ -208,15 +215,21 @@ class _DesktopBody extends StatelessWidget {
                 ),
               ),
             ),
-          SizedBox(height: sectionGap),
+          SizedBox(height: isTablet ? sectionGap : 40.w),
 
           // ── Tab Bar ────────────────────────────────────────────────────
           _Reveal(
             delay: const Duration(milliseconds: 180),
             direction: _SlideDirection.fromBottom,
             duration: const Duration(milliseconds: 600),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            // Figma: the tab bar is 1143 wide, centred, with its divider.
+            child: Container(
+              width: double.infinity,
+              margin: EdgeInsets.symmetric(horizontal: isTablet ? 0 : 128.w),
+              // Only the selected tab is underlined — no line under the
+              // rest of the bar.
+              child: Wrap(
+              alignment: WrapAlignment.center,
               children: List.generate(_tabs.length, (i) {
                 final bool selected = selectedTab == i;
                 // Admin-controlled icon/label overrides:
@@ -244,29 +257,37 @@ class _DesktopBody extends StatelessWidget {
                 // and admin say "Why Join Our Team" — one name, no "?".
                 final String cleanOverride =
                     tabLabelOverride.trim().replaceFirst(RegExp(r'[?؟]\s*$'), '');
-                return GestureDetector(
-                  onTap: () => onTabChange(i),
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
+                return Semantics(
+                  button: true,
+                  selected: selected,
+                  child: InkWell(
+                    onTap: () => onTabChange(i),
+                    // QA-Oct11 #30: no grey hover / press box on the tabs.
+                    hoverColor: Colors.transparent,
+                    splashColor: Colors.transparent,
+                    highlightColor: Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       margin:
-                      EdgeInsets.symmetric(horizontal: 6.w),
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 16.w,
-                        vertical: 8.h,
-                      ),
+                      EdgeInsets.symmetric(horizontal: isTablet ? 6.w : 0),
+                      padding: isTablet
+                          ? EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h)
+                          : EdgeInsets.only(left: 35.w, right: 35.w, bottom: 15.w),
                       decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(
                             color: selected
                                 ? primary
                                 : Colors.transparent,
-                            width: 2.5,
+                            width: 2, // Figma 2 px underline
                           ),
                         ),
                       ),
+                      // One row of tabs (Figma): each tab hugs its content —
+                      // a full-width Row made every tab wrap onto its own line.
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           AnimatedContainer(
                             duration:
@@ -275,29 +296,21 @@ class _DesktopBody extends StatelessWidget {
                             height: tabIconBox,
                             decoration: BoxDecoration(
                               borderRadius:
-                              BorderRadius.circular(8.r),
+                              BorderRadius.circular(isTablet ? 8.r : 14.r),
                               // BUG-137: primary icon on a DARK secondary
                               // tile was 2.58:1 → light brand tint instead.
-                              color: selected
+                              // BUG-184 / BUG-214: light inactive tile.
+                              // Figma: the same light tile for every tab.
+                              color: isTablet && selected
                                   ? primary
-                                  : (secondary.computeLuminance() < 0.2
-                                      ? Color.lerp(primary, Colors.white, 0.85)!
-                                      : secondary),
+                                  : const Color(0x1A71717A), // Figma 10 % #71717A
                             ),
                             child: Center(
                               child: tabIconUrl.isNotEmpty
-                                  ? SvgPicture.network(
-                                      tabIconUrl,
-                                      width: tabIconSz,
-                                      height: tabIconSz,
-                                      fit: BoxFit.scaleDown,
-                                      colorFilter: ColorFilter.mode(
-                                        selected ? Colors.white : primary,
-                                        BlendMode.srcIn,
-                                      ),
-                                      placeholderBuilder: (_) => SizedBox(
-                                          width: tabIconSz,
-                                          height: tabIconSz),
+                                  ? TintedNetworkIcon(
+                                      url: tabIconUrl,
+                                      size: tabIconSz,
+                                      color: isTablet && selected ? Colors.white : primary,
                                     )
                                   : SvgPicture.asset(
                                       _tabs[i].icon,
@@ -305,13 +318,13 @@ class _DesktopBody extends StatelessWidget {
                                       height: tabIconSz,
                                       fit: BoxFit.scaleDown,
                                       colorFilter: ColorFilter.mode(
-                                        selected ? Colors.white : primary,
+                                        isTablet && selected ? Colors.white : primary,
                                         BlendMode.srcIn,
                                       ),
                                     ),
                             ),
                           ),
-                          SizedBox(width: 6.w),
+                          SizedBox(width: isTablet ? 10.w : 30.w),
                           Text(
                             cleanOverride.isNotEmpty
                                 ? cleanOverride
@@ -319,12 +332,11 @@ class _DesktopBody extends StatelessWidget {
                             style:
                             StyleText.fontSize14Weight400.copyWith(
                               fontSize: tabFz,
-                              fontWeight: selected
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
+                              // Figma: active SemiBold #170F49, others Medium grey.
+                              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                               color: selected
-                                  ? primary
-                                  : const Color(0xFF797979), // Figma grey
+                                  ? (isTablet ? primary : const Color(0xFF170F49))
+                                  : SiteColors.description,
                             ),
                           ),
                         ],
@@ -334,8 +346,9 @@ class _DesktopBody extends StatelessWidget {
                 );
               }),
             ),
+            ),
           ),
-          SizedBox(height: sectionGap),
+          SizedBox(height: isTablet ? sectionGap : 40.w),
 
           _buildDesktopTabContent(
               selectedTab, primary, secondary, isTablet, isRtl),

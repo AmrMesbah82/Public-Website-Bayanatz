@@ -17,6 +17,8 @@
 //              Full AR / EN bilingual support via LanguageCubit.
 //              STICKY NAVBAR: GlobalKey measured dynamically.
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -38,6 +40,7 @@ import '../../controller/home_cubit.dart';
 import '../../controller/home_state.dart';
 import '../../controller/lang_state.dart';
 import 'package:website_app/core/theme/new_theme.dart';
+import '../../../../../core/responsive/site_layout.dart';
 
 
 
@@ -55,6 +58,12 @@ part '../widgets/home_shared_widgets.dart';
 // BUG-65: used from a part file — referenced here so an IDE
 // "Optimize Imports" can't drop the import.
 typedef _ScrollWithFooter = ScrollWithFooter;
+// BUG-181: used from part files (keeps the import).
+// Used only from part files (keeps "Optimize Imports" from removing it).
+// ignore: unused_element
+const double _kKeepMath = math.pi;
+
+typedef _SiteLayout = SiteLayout;
 
 // BUG-68: referenced in this file (not only in the part files) so an IDE
 // "Optimize Imports" can't drop the smart_network_image import.
@@ -62,8 +71,10 @@ typedef _SmartNetworkImage = SmartNetworkImage;
 
 // ── Breakpoints ───────────────────────────────────────────────────────────────
 class _BP {
-  static double get mobile => 600.w;
-  static double get tablet => 1024.w;
+  // BUG-162: breakpoints are LOGICAL window widths (they were `600.w`, which
+  // moved with the scale and made 541–767 px pick the wrong layout).
+  static const double mobile = 600;
+  static const double tablet = 1024;
 }
 
 const Color _kDefaultPrimary    = Color(0xFF2D8C4E);
@@ -99,13 +110,16 @@ Widget _smartImage({
 }) {
   if (url.isEmpty) return fallback ?? const SizedBox.shrink();
   if (_isNetworkUrl(url)) {
+    // BUG-251: SmartNetworkImage draws PNG/JPG/WebP AND raster-in-SVG files
+    // (Safari left the Home tiles blank with SvgPicture.network).
     return Center(
-      child: SvgPicture.network(
+      child: SmartNetworkImage(
         url,
         width:  width,
         height: height,
         fit:    fit,
-        colorFilter: colorFilter != null
+        fallback: fallback,
+        svgColorFilter: colorFilter != null
             ? ColorFilter.mode(colorFilter, BlendMode.srcIn)
             : null,
       ),

@@ -28,7 +28,7 @@ class _CmsFooterDesktop extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isRtl       = context.read<LanguageCubit>().state.isArabic;
-    final double contentW = (248.w * 4) + (8.w * 3);
+    final double contentW = _SiteLayout.contentWidth(context);
     final double hPad =
     ((MediaQuery.of(context).size.width - contentW) / 2)
         .clamp(16.w, double.infinity);

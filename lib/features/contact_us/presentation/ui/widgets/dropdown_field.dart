@@ -35,7 +35,7 @@ class _DropdownField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _FormLabel(label: label, required: required),
-        SizedBox(height: 6.h),
+        const SizedBox(height: 8), // same label gap as the text fields
         // Every dropdown (incl. searchable Location) now uses the shared
         // custom dropdown widget.
         CustomDropdownFormFieldInvMaster(
@@ -44,17 +44,16 @@ class _DropdownField extends StatelessWidget {
           onChanged:     onChanged,
           primaryColor:  primaryColor,
           width:         double.infinity,
-          height:        36,
+          height:        42, // BUG-165: same height as the text fields
           borderRadius:  4,
           widthIcon:     16,
           heightIcon:    16,
           hint: Text(hint,
               style: StyleText.fontSize12Weight400
-                  .copyWith(color: AppColors.secondaryBlack)),
+                  .copyWith(color: SiteColors.placeholder)),
           // BUG-131: red border + the same message style as text fields.
           errorText: showError ? requiredMsg : null,
         ),
-        SizedBox(height: 2.h),
       ],
     );
   }

@@ -122,13 +122,8 @@ class _ContactPageViewState extends State<_ContactPageView> {
         !emailOk ||
         !phoneOk ||
         !lengthsOk) {
-      // BUG-130: same feedback as the Apply form (fields marked + one toast).
-      final ar = context.read<LanguageCubit>().state.isArabic;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(ar
-            ? 'يرجى استكمال الحقول المحددة باللون الأحمر.'
-            : 'Please complete the highlighted fields.'),
-      ));
+      // BUG-164: only the inline validation from Figma (red borders + a
+      // message under each field) — no grey full-width SnackBar any more.
       return;
     }
 
@@ -456,7 +451,7 @@ class _ContactPageViewState extends State<_ContactPageView> {
                               // ✅ Loading overlay
                               if (isSending)
                                 Container(
-                                  color: const Color(0xFF797979) /* Figma grey */,
+                                  color: const Color(0xFF666666) /* Figma grey */,
                                   child: Center(
                                     child: Container(
                                       width: isMobile ? double.infinity : 600.w,

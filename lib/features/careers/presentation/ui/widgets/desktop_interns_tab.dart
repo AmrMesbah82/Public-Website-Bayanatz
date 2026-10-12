@@ -21,7 +21,9 @@ class _DesktopInternsTab extends StatelessWidget {
     isTablet ? _tabletHPad() : _desktopHPad(screenW);
     final double totalW = screenW - hPad * 2;
     final int cols = isTablet ? 2 : 3;
-    final double cardW = (totalW - 14.w * (cols - 1)) / cols;
+    // Figma: 3 cards of 450 per row, 25 px apart (rows 25 apart too).
+    final double gapW = isTablet ? 14.w : 25.w;
+    final double cardW = (totalW - gapW * (cols - 1)) / cols;
 
     final List<Widget> rows = [];
     for (int i = 0; i < interns.length; i += cols) {
@@ -41,7 +43,7 @@ class _DesktopInternsTab extends StatelessWidget {
         } else {
           rowChildren.add(SizedBox(width: cardW));
         }
-        if (j < i + cols - 1) rowChildren.add(SizedBox(width: 14.w));
+        if (j < i + cols - 1) rowChildren.add(SizedBox(width: gapW));
       }
       rows.add(
         _Reveal(
@@ -56,7 +58,7 @@ class _DesktopInternsTab extends StatelessWidget {
           ),
         ),
       );
-      if (i + cols < interns.length) rows.add(SizedBox(height: 14.h));
+      if (i + cols < interns.length) rows.add(SizedBox(height: isTablet ? 14.h : 25.w));
     }
     return Column(children: rows);
   }

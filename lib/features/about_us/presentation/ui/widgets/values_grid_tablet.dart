@@ -29,7 +29,6 @@ class _ValuesGridTabletState extends State<_ValuesGridTablet> {
           child: Text(
             'No values added yet.',
             style: StyleText.fontSize14Weight400.copyWith(
-              fontFamily: 'Cairo',
               fontSize: 12.sp,
               color: Colors.grey[500],
             ),
@@ -50,8 +49,9 @@ class _ValuesGridTabletState extends State<_ValuesGridTablet> {
           Container(
             width: double.infinity,
             padding: EdgeInsets.all(12.r),
+            // BUG-214: light container (was the dark CMS secondary colour).
             decoration: BoxDecoration(
-              color: widget.secondaryColor,
+              color: widget.primaryColor.withOpacity(0.12),
               borderRadius: BorderRadius.circular(10.r),
             ),
             child: Wrap(

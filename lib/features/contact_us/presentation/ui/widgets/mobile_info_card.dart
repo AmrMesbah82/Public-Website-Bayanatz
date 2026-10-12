@@ -19,21 +19,24 @@ class _MobileInfoCard extends StatelessWidget {
 
     return Container(
       width:   double.infinity,
-      padding: EdgeInsets.all(16.r),
+      // Figma (iPhone info card): radius 8, padding 10; intro SemiBold 16
+      // #09090B; "Email" / "Follow Us" Bold 16/30 primary; address Medium
+      // 14/30 grey; ≈ 20 px between the groups.
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
           color:        Colors.white,
-          borderRadius: BorderRadius.circular(12.r)),
+          borderRadius: BorderRadius.circular(8)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(desc,
               style: StyleText.fontSize12Weight600.copyWith(
-                  height: 1.6, color: Colors.black87, fontSize: 12.sp)),
-          SizedBox(height: 18.h),
+                  height: 1.6, color: SiteColors.title, fontSize: 16)), // BUG-186
+          const SizedBox(height: 20),
           Text(emailLabel,
               style: StyleText.fontSize15Weight600.copyWith(
-                  color: primaryColor, fontSize: 13.sp)),
-          SizedBox(height: 4.h),
+                  color: primaryColor, fontSize: 16, height: 30 / 16,
+                  fontWeight: FontWeight.w700)),
           GestureDetector(
             onTap: () async {
               final email = cmsData?.email ?? 'info@bayanatz.com';
@@ -45,19 +48,20 @@ class _MobileInfoCard extends StatelessWidget {
               child: Text(
                 cmsData?.email ?? 'info@bayanatz.com',
                 style: StyleText.fontSize13Weight400.copyWith(
-                  color:           primaryColor,
-                  fontSize:        12.sp,
-                  decoration:      TextDecoration.underline,
-                  decorationColor: primaryColor,
+                  color:      SiteColors.description,
+                  fontSize:   14,
+                  height:     30 / 14,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
           ),
-          SizedBox(height: 16.h),
+          const SizedBox(height: 22),
           Text(followLabel,
               style: StyleText.fontSize15Weight600.copyWith(
-                  color: primaryColor, fontSize: 13.sp)),
-          SizedBox(height: 8.h),
+                  color: primaryColor, fontSize: 16, height: 30 / 16,
+                  fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
           _SocialRow(
               cmsData: cmsData, scaled: false, primaryColor: primaryColor),
         ],

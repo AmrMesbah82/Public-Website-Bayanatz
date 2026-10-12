@@ -23,32 +23,35 @@ class _DesktopTabItemState extends State<_DesktopTabItem> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ FIX: icon uses primaryColor on secondary background when not selected,
-    // so the real uploaded image shows through. Only apply white tint when selected.
-    // BUG-137: the dark-green Mission icon on the DARK secondary tile was
-    // 2.11:1. A dark secondary is swapped for a light brand tint (≥ 3:1).
-    final Color iconBg = widget.isSelected
-        ? widget.primaryColor
-        : (widget.secondaryColor.computeLuminance() < 0.2
-            ? Color.lerp(widget.primaryColor, Colors.white, 0.85)!
-            : widget.secondaryColor);
+    // BUG-214: never a dark tile — light tint when not selected.
+    // Figma: the 48×48 icon tile is the same light grey on every card
+    // (selected or not) with the glyph in the primary colour.
+    const Color iconBg = Color(0x1A797979);
     final Color hoverBg = _hoverTint(widget.primaryColor);
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
+    // BUG-185 — Figma: white card radius 15; the SELECTED card has a 2 px
+    // primary border with its excerpt inside; title Cairo Bold 24 primary,
+    // text 18 px. BUG-229: constant outer size of the border (no jump).
+    return Semantics(
+      button: true,
+      selected: widget.isSelected,
+      child: InkWell(
         onTap: widget.onTap,
+        onHover: (v) => setState(() => _hovered = v),
+        borderRadius: BorderRadius.circular(15.r),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           width: double.infinity,
-          padding: EdgeInsets.all(14.r),
+          padding: EdgeInsets.all(25.w), // Figma: 25 px padding, radius 15
           decoration: BoxDecoration(
             color: widget.isSelected
                 ? _kSurface
                 : (_hovered ? hoverBg : _kSurface),
-            borderRadius: BorderRadius.circular(12.r),
+            borderRadius: BorderRadius.circular(15.r),
+            border: Border.all(
+              color: widget.isSelected ? widget.primaryColor : Colors.transparent,
+              width: 2,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -58,8 +61,8 @@ class _DesktopTabItemState extends State<_DesktopTabItem> {
                 children: [
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    width: 42.r,
-                    height: 42.r,
+                    width: 48.w,
+                    height: 48.w,
                     decoration: BoxDecoration(
                       color: iconBg,
                       borderRadius: BorderRadius.circular(8.r),
@@ -68,50 +71,46 @@ class _DesktopTabItemState extends State<_DesktopTabItem> {
                       child: widget.iconUrl.isNotEmpty
                           ? _netImg(
                         url: widget.iconUrl,
-                        width: 24.sp,
-                        height: 24.sp,
+                        width: 26.w,
+                        height: 26.w,
                         fit: BoxFit.contain,
-                        // ✅ FIX: colorFilter only when selected (white overlay)
-                        // When not selected, render the real image colors
-                        colorFilter: widget.isSelected
-                            ? const ColorFilter.mode(
-                            Colors.white, BlendMode.srcIn)
-                            : null,
+                        // BUG-227: white GLYPH when selected (background
+                        // shapes are stripped before tinting).
+                        colorFilter: ColorFilter.mode(
+                            widget.primaryColor, BlendMode.srcIn),
                       )
                           : Icon(
                         Icons.image_outlined,
-                        size: 20.sp,
-                        color: widget.isSelected
-                            ? Colors.white
-                            : widget.primaryColor,
+                        size: 24.r,
+                        color: widget.primaryColor,
                       ),
                     ),
                   ),
-                  SizedBox(width: 12.w),
+                  SizedBox(width: 13.w),
                   Flexible(
                     child: Text(
                       widget.label,
                       style: StyleText.fontSize18Weight500.copyWith(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 24.sp, // Figma Bold 24 primary
+                        height: 1.1,
+                        fontWeight: FontWeight.w700,
                         color: widget.primaryColor,
                       ),
                     ),
                   ),
                 ],
               ),
-              // ✅ FIX: selectedDesc is '' for Values tab so this block
-              // never renders for Values → no extra padding
               if (widget.isSelected && widget.selectedDesc.isNotEmpty) ...[
-                SizedBox(height: 10.h),
+                SizedBox(height: 20.w),
                 Text(
                   widget.selectedDesc,
-                  maxLines: 5,
+                  maxLines: 3, // Figma: 3-line excerpt
                   overflow: TextOverflow.ellipsis,
                   style: StyleText.fontSize13Weight400.copyWith(
-                    fontSize: 11.sp,
-                    height: 1.65,
-                    color: AppColors.secondaryBlack,
+                    fontSize: 18.sp, // Figma SemiBold 18/30
+                    fontWeight: FontWeight.w600,
+                    height: 30 / 18,
+                    color: SiteColors.description,
                   ),
                 ),
               ],

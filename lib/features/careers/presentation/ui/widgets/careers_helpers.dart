@@ -6,9 +6,12 @@ class _BP {
 }
 
 // ── Content width + hPad ─────────────────────────────────────────────────────
-double _desktopContentW() => (248.w * 4) + (8.w * 3);
+// Figma desktop content column: 1400 px of the 1800 frame (`.w` = scale).
+// The iPad frame (tablet band) uses the same components on a 1144 column.
+double _desktopContentW([double? screenW]) =>
+    (screenW != null && screenW < _BP.tablet) ? 1144.w : 1400.w;
 double _desktopHPad(double screenW) =>
-    ((screenW - _desktopContentW()) / 2).clamp(16.0, double.infinity);
+    ((screenW - _desktopContentW(screenW)) / 2).clamp(16.0, double.infinity);
 double _tabletHPad() => 16.w;
 
 // ── Deep-link tab resolution ──────────────────────────────────────────────────

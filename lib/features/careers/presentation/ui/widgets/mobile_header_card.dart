@@ -16,10 +16,12 @@ class _MobileHeaderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.only(right:  10.sp, left: 10.sp , bottom: 10.sp,top: 5.sp),
+      // Figma (iPhone): white card radius 15, padding 10; text Cairo
+      // Medium 14 / 23 grey; "Apply Now" 100×36 radius 8, SemiBold 14.
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(15),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -28,12 +30,13 @@ class _MobileHeaderCard extends StatelessWidget {
             Text(
               description,
               style: StyleText.fontSize13Weight400.copyWith(
-                fontSize: 11.sp,
-                height: 1.65,
-                color: Colors.black87,
+                fontSize: 14,
+                height: 23 / 14,
+                fontWeight: FontWeight.w500,
+                color: SiteColors.description,
               ),
             ),
-          SizedBox(height: 14.h),
+          const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
@@ -42,18 +45,17 @@ class _MobileHeaderCard extends StatelessWidget {
                 GestureDetector(
                   onTap: () => context.go('/jobs'),
                   child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 6.h,
-                    ),
+                    constraints: const BoxConstraints(minWidth: 100, minHeight: 36),
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
                     decoration: BoxDecoration(
                       color: primary,
-                      borderRadius: BorderRadius.circular(6.r),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       btnLabel,
                       style: StyleText.fontSize12Weight600.copyWith(
-                        fontSize: 10.sp,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
                       ),

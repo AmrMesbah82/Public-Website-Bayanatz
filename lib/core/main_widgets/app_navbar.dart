@@ -31,17 +31,18 @@ import '../theme/appcolors.dart';
 // StyleText resolves the admin-selected English/Arabic font at runtime,
 // so navbar labels follow the CMS font choice instead of a hardcoded Cairo.
 import '../theme/new_theme.dart';
-
-class _WebColors {
-  static const Color primary        = Colors.transparent;
-  static const Color cardLightGreen = Color(0xFFE8F5EE);
-  static const Color drawerBg       = Color(0xFFF5F9F5);
-}
+import '../responsive/site_layout.dart';
 
 class _BP {
   static const double mobile = 600;
   static const double tablet = 1024;
 }
+
+
+/// QA-Oct11: the desktop header looked zoomed-in at the Figma 1:1 sizes.
+/// Every desktop header size (card height, logo, menu items, language box)
+/// is multiplied by this factor — change it here to resize the whole header.
+const double _kHdr = 0.8;
 
 // ── SVG asset map — keyed by route ────────────────────────────────────────────
 const Map<String, String> _kSvgMap = {
@@ -227,7 +228,9 @@ class AppNavbar extends StatelessWidget {
         final Color navbarBg = _navbarBgFromState(cmsState); // ✅ CMS-driven bg
         final double w       = MediaQuery.of(context).size.width;
 
-        if (w >= _BP.tablet)
+        // BUG-162 / BUG-161: the full menu only from 1024 px; below that the
+        // ☰ header (it used to switch at ~541 px and squeeze the desktop menu).
+        if (w >= _BP.tablet) {
           return _NavbarDesktop(
             currentRoute: currentRoute,
             primary:      primary,
@@ -235,14 +238,7 @@ class AppNavbar extends StatelessWidget {
             cmsState:     cmsState,
             onItemTap:    onItemTap,
           );
-        if (w >= _BP.mobile)
-          return _NavbarDesktop(
-            currentRoute: currentRoute,
-            primary:      primary,
-            navbarBg:     navbarBg,
-            cmsState:     cmsState,
-            onItemTap:    onItemTap,
-          );
+        }
         return _NavbarMobile(
           currentRoute: currentRoute,
           primary:      primary,
@@ -256,7 +252,7 @@ class AppNavbar extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// DESKTOP  (≥ 1024px) — design size 1366×768
+// DESKTOP  (≥ 1024px)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _NavbarDesktop extends StatelessWidget {
@@ -276,7 +272,10 @@ class _NavbarDesktop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double contentW = (248.w * 4) + (8.w * 3);
+    // BUG-174: the header is a floating white rounded card aligned with the
+    // page content column (same width + left edge as every page body and the
+    // footer) — not a full-width bar glued to the top of the window.
+    final double contentW = SiteLayout.contentWidth(context);
 
     return BlocBuilder<LanguageCubit, LanguageState>(
       builder: (context, langState) {
@@ -285,43 +284,70 @@ class _NavbarDesktop extends StatelessWidget {
 
         return Directionality(
           textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
-            decoration: BoxDecoration(
-              color:        navbarBg, // ✅ CMS-driven background
-              borderRadius: BorderRadius.circular(8.r),
-            ),
-            // BUG-140: the menu was centred in the space BETWEEN the logo and
-            // the language box (≈30 px left of the page centre). It is now
-            // centred on the bar itself; logo / toggle sit at the two ends.
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                const Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: _BayanatzLogo(),
+          child: Padding(
+            // Figma desktop frame: the header card starts 45 px from the top.
+            padding: EdgeInsets.only(top: 45.w),
+            child: Center(
+              child: Container(
+                width: contentW,
+                // Figma (BAYANATZ WEB › header): white card 1400×100, radius 8,
+                // logo 70×70 at +15, menu centred, language box 25 from the end.
+                height: 100.w * _kHdr,
+                padding: EdgeInsetsDirectional.only(start: 15.w * _kHdr, end: 25.w * _kHdr),
+                decoration: BoxDecoration(
+                  color:        navbarBg, // admin: Header and Footer colour
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: navItems
-                      .map((e) => _NavItem(
-                    key:          ValueKey('${e.route}_${langState.locale.languageCode}'),
-                    label:        FormatHelper.capitalize(e.label),
-                    route:        e.route,
-                    currentRoute: currentRoute,
-                    primary:      primary,
-                    onItemTap:    onItemTap,
-                  ))
-                      .toList(),
-                ),
-                Align(
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: _LanguageToggle(
-                    primary:   primary,
-                    secondary: _secondaryFromState(cmsState),
+                child: FocusTraversalGroup(
+                  // BUG-257: logo → menu → AR/ENG are reachable with Tab.
+                  child: Row(
+                    children: [
+                      const _BayanatzLogo(rawSize: true),
+                      // Figma: the menu starts 392 px from the card's start
+                      // edge (15 + 70 logo + 307).
+                      SizedBox(width: 307.w * _kHdr),
+                      Expanded(
+                        child: Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                for (int i = 0; i < navItems.length; i++) ...[
+                                  // QA-Oct11 #1: every item carries the same
+                                  // 24 px side padding as the active pill, so
+                                  // the hover tint is a full pill (not a box
+                                  // hugging the text). The 48 px text gap of
+                                  // Figma is now 24 + 24 of padding.
+                                  // QA-Oct11: 20 px gap so a hovered pill
+                                  // never touches the selected pill.
+                                  if (i > 0) SizedBox(width: 20.sp),
+                                  _NavItem(
+                                    key: ValueKey('${navItems[i].route}_${langState.locale.languageCode}'),
+                                    label:        FormatHelper.capitalize(navItems[i].label),
+                                    route:        navItems[i].route,
+                                    currentRoute: currentRoute,
+                                    primary:      primary,
+                                    onItemTap:    onItemTap,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 16.w),
+                      _LanguageToggle(
+                        primary:   primary,
+                        secondary: _secondaryFromState(cmsState),
+                        desktop:   true,
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         );
@@ -333,7 +359,7 @@ class _NavbarDesktop extends StatelessWidget {
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// MOBILE  (< 600px) — design size 375×812
+// MOBILE + TABLET  (< 1024px)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _NavbarMobile extends StatelessWidget {
@@ -359,36 +385,23 @@ class _NavbarMobile extends StatelessWidget {
 
         return Directionality(
           textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
+          // Figma (iPhone view): no card — the 48 px logo at the start and the
+          // ☰ icon at the end, on the page background, 16 px gutters.
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(6.r),
-              ),
-              child: Padding(
-                padding: EdgeInsets.only(right: 0.w, top: 8.h, bottom: 8.h,left: 8.h,),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const _BayanatzLogo(rawSize: true),
-                    // BUG-138: was announced as an unnamed "button".
-                    Semantics(
-                      button: true,
-                      label: isRtl ? 'فتح القائمة' : 'Open menu',
-                      child: GestureDetector(
-                      onTap: () => _openDrawer(context),
-                      child: Container(
-                        width:  36.w,
-                        height: 36.w,
-                        decoration:
-                        BoxDecoration(borderRadius: BorderRadius.circular(8.r)),
-                        child: Icon(Icons.menu_rounded,
-                            color: AppColors.textButton, size: 20.sp),
-                      ),
-                    ),
-                    ),
-                  ],
-                ),
+            padding: const EdgeInsets.fromLTRB(16, 20, 6, 0),
+            child: SizedBox(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const _BayanatzLogo(rawSize: true),
+                  // BUG-138 / BUG-257: named, focusable, 44×44 tap target.
+                  _HeaderIconButton(
+                    label: isRtl ? 'فتح القائمة' : 'Open menu',
+                    icon:  Icons.menu_rounded,
+                    color: AppColors.textButton,
+                    onTap: () => _openDrawer(context),
+                  ),
+                ],
               ),
             ),
           ),
@@ -417,9 +430,48 @@ class _NavbarMobile extends StatelessWidget {
   }
 }
 
+/// 44×44 focusable icon button used by the ☰ / ✕ header controls.
+class _HeaderIconButton extends StatelessWidget {
+  final String       label;
+  final IconData     icon;
+  final Color        color;
+  final Color?       background;
+  final VoidCallback onTap;
+
+  const _HeaderIconButton({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+    this.background,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label:  label,
+      excludeSemantics: true,
+      child: Material(
+        color: background ?? Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: SizedBox(
+            width:  44,
+            height: 44,
+            child: Icon(icon, color: color, size: 24),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Full-Screen Drawer (mobile) ──────────────────────────────────────────────
 
-class _FullScreenDrawer extends StatelessWidget {
+class _FullScreenDrawer extends StatefulWidget {
   final String                       currentRoute;
   final Color                        primary;
   final Color                        navbarBg; // ✅ for top bar background
@@ -435,122 +487,142 @@ class _FullScreenDrawer extends StatelessWidget {
   });
 
   @override
+  State<_FullScreenDrawer> createState() => _FullScreenDrawerState();
+}
+
+class _FullScreenDrawerState extends State<_FullScreenDrawer> {
+  bool _closing = false;
+
+  void _close() {
+    if (_closing) return;
+    _closing = true;
+    if (mounted && Navigator.of(context).canPop()) Navigator.of(context).pop();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // BUG-163: when the window is widened to the desktop header the menu
+    // closes by itself (it used to stay open and grow ×2.6).
+    if (MediaQuery.sizeOf(context).width >= _BP.tablet) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _close());
+    }
+
+    final String currentRoute = widget.currentRoute;
+    final Color primary = widget.primary;
+    // BUG-244: ONE surface colour for the whole panel (header + list).
+    final Color surface = widget.navbarBg;
+
     return BlocBuilder<LanguageCubit, LanguageState>(
       builder: (context, langState) {
-        final navItems    = _getVisibleNavItems(langState.locale.languageCode, cmsState);
+        final navItems    = _getVisibleNavItems(langState.locale.languageCode, widget.cmsState);
         final isRtl       = langState.isArabic;
         final Color lightTint = _lightTint(primary);
 
         return Directionality(
           textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
           child: Scaffold(
-            backgroundColor: _WebColors.drawerBg,
+            backgroundColor: surface,
             body: SafeArea(
+              child: FocusTraversalGroup(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // ── Top bar uses navbarBg ──────────────────────────────
+                  // ── Top bar ────────────────────────────────────────────
                   Container(
-                    color: navbarBg, // ✅ CMS-driven background
-                    padding: EdgeInsets.symmetric(
-                        horizontal: 16.w, vertical: 10.h),
+                    color: surface,
+                    padding: const EdgeInsets.fromLTRB(24, 18, 20, 10),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const _BayanatzLogo(rawSize: true),
-                        Semantics(
-                          button: true,
-                          label: 'Close menu / إغلاق القائمة', // BUG-138
-                          child: GestureDetector(
-                          onTap: () => Navigator.of(context).pop(),
-                          child: Container(
-                            width:  36.w,
-                            height: 36.w,
-                            decoration: BoxDecoration(
-                              color:        lightTint,
-                              borderRadius: BorderRadius.circular(8.r),
-                            ),
-                            child: Icon(Icons.menu_rounded,
-                                color: primary, size: 20.sp),
-                          ),
-                        ),
+                        // BUG-163: the close button shows ✕ (it showed ☰).
+                        _HeaderIconButton(
+                          label:      isRtl ? 'إغلاق القائمة' : 'Close menu',
+                          icon:       Icons.close_rounded,
+                          color:      primary,
+                          background: lightTint,
+                          onTap:      _close,
                         ),
                       ],
                     ),
                   ),
+                  // QA-Oct11 #7: no divider under the drawer header.
 
-                  SizedBox(height: 10.h),
+                  const SizedBox(height: 12),
 
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         _LanguageToggle(
                           primary:   primary,
-                          secondary: _secondaryFromState(cmsState),
+                          secondary: _secondaryFromState(widget.cmsState),
                         ),
                       ],
                     ),
                   ),
 
-                  SizedBox(height: 10.h),
+                  const SizedBox(height: 12),
 
                   // ── Nav list ──────────────────────────────────────────
                   Expanded(
                     child: ListView(
                       key:     ValueKey(langState.locale.languageCode),
-                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       children: navItems.map((e) {
                         final bool isActive =
                             _isRouteActive(context, e.route, currentRoute);
-                        return GestureDetector(
-                          onTap: () {
-                            Navigator.of(context).pop();
-                            if (onItemTap != null) {
-                              onItemTap!(e.route);
-                            } else {
-                              context.go(e.route);
-                            }
-                          },
-                          child: Container(
-                            key: ValueKey(
-                                '${e.route}_${langState.locale.languageCode}'),
-                            width:   double.infinity,
-                            margin:  EdgeInsets.only(bottom: 6.h),
-                            padding: EdgeInsets.symmetric(
-                                vertical: 12.h, horizontal: 16.w),
-                            decoration: BoxDecoration(
-                              color: isActive ? primary : Colors.transparent,
-                              borderRadius: BorderRadius.circular(10.r),
-                            ),
-                            child: Row(
-                              children: [
-                                SvgPicture.asset(
-                                  e.svgAsset,
-                                  width:  20.w,
-                                  height: 20.w,
-                                  colorFilter: ColorFilter.mode(
-                                    isActive ? Colors.white : AppColors.textButton,
-                                    BlendMode.srcIn,
-                                  ),
+                        return Padding(
+                          key: ValueKey(
+                              '${e.route}_${langState.locale.languageCode}'),
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Material(
+                            color: isActive ? primary : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(10),
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                if (widget.onItemTap != null) {
+                                  widget.onItemTap!(e.route);
+                                } else {
+                                  context.go(e.route);
+                                }
+                              },
+                              child: Container(
+                                width:   double.infinity,
+                                constraints: const BoxConstraints(minHeight: 48),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 12, horizontal: 16),
+                                child: Row(
+                                  children: [
+                                    SvgPicture.asset(
+                                      e.svgAsset,
+                                      width:  20,
+                                      height: 20,
+                                      colorFilter: ColorFilter.mode(
+                                        isActive ? Colors.white : AppColors.textButton,
+                                        BlendMode.srcIn,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Text(
+                                      e.label,
+                                      textDirection: isRtl
+                                          ? TextDirection.rtl
+                                          : TextDirection.ltr,
+                                      style: StyleText.fontSize14Weight400.copyWith(
+                                        fontSize:   16,
+                                        fontWeight: isActive
+                                            ? AppFontWeights.semiBold
+                                            : AppFontWeights.regular,
+                                        color: isActive ? Colors.white : AppColors.text,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                SizedBox(width: 14.w),
-                                Text(
-                                  e.label,
-                                  textDirection: isRtl
-                                      ? TextDirection.rtl
-                                      : TextDirection.ltr,
-                                  style: StyleText.fontSize14Weight400.copyWith(
-                                    fontSize:   14.sp,
-                                    fontWeight: isActive
-                                        ? AppFontWeights.semiBold
-                                        : AppFontWeights.regular,
-                                    color: isActive ? Colors.white : AppColors.text,
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ),
                         );
@@ -558,6 +630,7 @@ class _FullScreenDrawer extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
               ),
             ),
           ),
@@ -575,7 +648,11 @@ class _BayanatzLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double sz = rawSize ? 40.w : 36.w;
+    // BUG-175: Figma logo is 70 px in the 100 px header card (was ≈38 px).
+    // Phones / tablets: 42 px (fixed, never scaled by the window width).
+    final bool desktop = MediaQuery.sizeOf(context).width >= _BP.tablet;
+    // Figma: 70×70 in the desktop header card; 48 px on phones / tablets.
+    final double sz = desktop ? 70.w * _kHdr : 48;
 
     return BlocBuilder<HomeCmsCubit, HomeCmsState>(
       builder: (context, state) {
@@ -591,35 +668,33 @@ class _BayanatzLogo extends StatelessWidget {
           logoUrl,
           width:  sz,
           height: sz,
-          fit:    BoxFit.fill,
+          fit:    BoxFit.contain,
           fallback: Image(
             image:  const AssetImage("assets/images/logo.jpg"),
             width:  sz,
             height: sz,
-            fit:    BoxFit.fill,
+            fit:    BoxFit.contain,
           ),
         )
             : Image(
           image:  const AssetImage("assets/images/logo.jpg"),
           width:  sz,
           height: sz,
-          fit:    BoxFit.fill,
+          fit:    BoxFit.contain,
         );
 
-        // BUG-138: the logo button had no accessible name.
+        // BUG-138 / BUG-257: named + keyboard-focusable link to Home.
         return Semantics(
-          button: true,
+          link: true,
           label: 'Bayanatz home',
-          child: GestureDetector(
-          onTap: () => context.go('/'),
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () => context.go('/'),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(8.r),
+              borderRadius: BorderRadius.circular(8),
               child: logoWidget,
             ),
           ),
-        ),
         );
       },
     );
@@ -661,11 +736,12 @@ class _NavItemState extends State<_NavItem> {
 
     return BlocBuilder<LanguageCubit, LanguageState>(
       builder: (context, langState) {
-        return MouseRegion(
-          onEnter: (_) => setState(() => _hovered = true),
-          onExit:  (_) => setState(() => _hovered = false),
-          cursor:  SystemMouseCursors.click,
-          child: GestureDetector(
+        // BUG-257: InkWell = focusable with Tab, activates with Enter/Space,
+        // and shows a visible focus ring.
+        return Semantics(
+          link: true,
+          selected: isActive,
+          child: InkWell(
             onTap: () {
               if (widget.onItemTap != null) {
                 widget.onItemTap!(widget.route);
@@ -673,13 +749,22 @@ class _NavItemState extends State<_NavItem> {
                 context.go(widget.route);
               }
             },
+            onHover: (v) => setState(() => _hovered = v),
+            borderRadius: BorderRadius.circular(8.r),
+            focusColor: hoverBg,
+            hoverColor: Colors.transparent,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              margin: EdgeInsets.symmetric(
-                  horizontal: widget.compact ? 2.w : 3.w),
+              // Figma: active item = primary pill, 50 tall, 16 px padding,
+              // radius 8; Cairo SemiBold 22 #2D2D2D (white on the pill).
+              // Figma: inactive items are bare text; the active item is a
+              // 50 px primary pill with 24 px side padding, radius 8.
+              height: widget.compact ? null : 50.w * _kHdr,
+              alignment: Alignment.center,
               padding: EdgeInsets.symmetric(
-                horizontal: widget.compact ? 8.w  : 12.w,
-                vertical:   widget.compact ? 6.h  : 7.h,
+                // QA-Oct11 #1: same padding hovered / selected / idle.
+                horizontal: widget.compact ? 8.w : 24.w * _kHdr,
+                vertical:   widget.compact ? 6.h : 0,
               ),
               decoration: BoxDecoration(
                 color: isActive
@@ -692,14 +777,14 @@ class _NavItemState extends State<_NavItem> {
                 textDirection: langState.isArabic
                     ? TextDirection.rtl
                     : TextDirection.ltr,
-                style: StyleText.fontSize14Weight400.copyWith(
-                  fontSize:   widget.compact ? 11.sp : 13.sp,
-                  fontWeight: isActive
-                      ? AppFontWeights.medium
-                      : AppFontWeights.regular,
+                // Figma: Cairo SemiBold 22 #2D2D2D (white on the pill).
+                style: StyleText.fontSize14Weight600.copyWith(
+                  fontSize:   widget.compact ? 14.sp : 22.sp * _kHdr,
+                  height:     1.0,
+                  fontWeight: FontWeight.w600,
                   color: isActive
                       ? Colors.white
-                      : (_hovered ? widget.primary : AppColors.text),
+                      : (_hovered ? widget.primary : const Color(0xFF2D2D2D)),
                 ),
               ),
             ),
@@ -715,39 +800,57 @@ class _NavItemState extends State<_NavItem> {
 class _LanguageToggle extends StatelessWidget {
   final Color primary;
   final Color secondary;
-  const _LanguageToggle({required this.primary, required this.secondary});
+  /// Desktop header: Figma box 108×50 (scaled with the page). Drawer: fixed px.
+  final bool desktop;
+  const _LanguageToggle({
+    required this.primary,
+    required this.secondary,
+    this.desktop = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<LanguageCubit, LanguageState>(
       builder: (context, state) {
+        // Figma "language": #F1F2ED box 108×50, radius 6; active language =
+        // primary pill 42×30 radius 6 with white 14 px SemiBold.
+        // BUG-257: each option stays a focusable target.
+        // Figma: box 108×50; AR slot at +2, ENG pill (42×30) at +56.
+        // QA-Oct11 #2 / #26: the selected pill keeps the SAME gap to the box
+        // edge on its side as on top (10 px all round) — it used to sit 2 px
+        // from the start edge (flush against the right edge in Arabic).
+        final double boxH = desktop ? 50.w * _kHdr : 50;
+        final double inset = desktop ? 10.w * _kHdr : 10;
         return Container(
+          height: boxH,
+          padding: EdgeInsets.symmetric(horizontal: inset),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(6.r),
-            color:        secondary, // ✅ background uses secondary, not primary
+            borderRadius: BorderRadius.circular(desktop ? 6.r : 6),
+            color:        const Color(0xFFF1F2ED),
           ),
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              mainAxisSize:      MainAxisSize.max,
-              children: [
-                _LangBtn(
-                  label:   'AR',
-                  active:  state.isArabic,
-                  primary: primary,
-                  onTap:   () =>
-                      context.read<LanguageCubit>().setLanguage('ar'),
-                ),
-                _LangBtn(
-                  label:   'EN',
-                  active:  state.isEnglish,
-                  primary: primary,
-                  onTap:   () =>
-                      context.read<LanguageCubit>().setLanguage('en'),
-                ),
-              ],
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _LangBtn(
+                label:     'AR',
+                semantics: 'العربية',
+                active:    state.isArabic,
+                primary:   primary,
+                desktop:   desktop,
+                onTap:     () =>
+                    context.read<LanguageCubit>().setLanguage('ar'),
+              ),
+              SizedBox(width: desktop ? 8.w : 8),
+              _LangBtn(
+                label:     'ENG',
+                semantics: 'English',
+                active:    state.isEnglish,
+                primary:   primary,
+                desktop:   desktop,
+                onTap:     () =>
+                    context.read<LanguageCubit>().setLanguage('en'),
+              ),
+            ],
           ),
         );
       },
@@ -757,35 +860,58 @@ class _LanguageToggle extends StatelessWidget {
 
 class _LangBtn extends StatelessWidget {
   final String       label;
+  final String       semantics;
   final bool         active;
   final Color        primary;
+  final bool         desktop;
   final VoidCallback onTap;
 
   const _LangBtn({
     required this.label,
+    required this.semantics,
     required this.active,
     required this.primary,
     required this.onTap,
+    this.desktop = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
-          decoration: BoxDecoration(
-            color:        active ? primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(5.r),
-          ),
-          child: Text(
-            label,
-            style: StyleText.fontSize11Weight600.copyWith(
-              fontSize:   11.sp,
-              fontWeight: AppFontWeights.semiBold,
-              color:      active ? Colors.white : const Color(0xFF797979), // Figma
+    final double pillW = desktop ? 42.w * _kHdr : 42;
+    final double pillH = desktop ? 30.w * _kHdr : 30;
+    return Semantics(
+      button:   true,
+      selected: active,
+      label:    semantics,
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        focusColor: primary.withOpacity(0.18),
+        child: SizedBox(
+          height: desktop ? 50.w * _kHdr : 50,
+          child: Center(
+            // Figma: the pill is exactly 42×30 (it stretched to the full
+            // 50 px box because an aligned Container fills its parent).
+            child: Container(
+              constraints: BoxConstraints(minWidth: pillW),
+              height: pillH,
+              alignment: Alignment.center,
+              padding: EdgeInsets.symmetric(horizontal: desktop ? 8.w : 8),
+              decoration: BoxDecoration(
+                color:        active ? primary : Colors.transparent,
+                borderRadius: BorderRadius.circular(desktop ? 6.r : 6),
+              ),
+              child: Text(
+                label,
+                // Figma: Cairo SemiBold 14 / 160 %, #797979 when inactive.
+                style: StyleText.fontSize14Weight600.copyWith(
+                  fontSize:   desktop ? 14.sp : 14,
+                  height:     1.0,
+                  fontWeight: FontWeight.w600,
+                  color:      active ? Colors.white : const Color(0xFF797979),
+                ),
+              ),
             ),
           ),
         ),

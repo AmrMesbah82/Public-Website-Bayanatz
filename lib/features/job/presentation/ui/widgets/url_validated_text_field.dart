@@ -71,9 +71,11 @@ class _UrlValidatedTextFieldState extends State<_UrlValidatedTextField> {
       padding: EdgeInsets.only(bottom: 2.h),
       child: CustomTextField(
         label: widget.label,
+        // BUG-236: required Link documents get the red "*" too.
+        required: widget.isRequired,
         hint: widget.hint,
         controller: widget.controller,
-        height: 36,
+        height: 42,
         fillColor: Colors.white,
         textDirection: TextDirection.ltr,
         textAlign: TextAlign.start,

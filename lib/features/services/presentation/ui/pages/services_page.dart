@@ -20,6 +20,8 @@
 // FIX: Blog posts now show up to 5 (was hard-limited to 3) ✅
 // FIX: Desktop blog section uses Wrap to support more than 3 posts ✅
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -46,6 +48,9 @@ import '../../controller/blog_cubit.dart';
 import '../../controller/blog_state.dart';
 import '../../controller/services_cubit.dart';
 import '../../controller/services_state.dart';
+import '../../../../../core/widgets/smart_network_image.dart';
+import '../../../../../core/theme/site_tokens.dart';
+import '../../../../../core/responsive/site_layout.dart';
 
 part '../widgets/services_page_bp.dart';
 part '../widgets/reveal_coordinator.dart';
@@ -64,6 +69,13 @@ part '../widgets/blog_card_mobile.dart';
 part '../widgets/blog_card_desktop.dart';
 part '../widgets/read_more_btn_mobile.dart';
 part '../widgets/read_more_btn_desktop.dart';
+
+// BUG-251: used from part files — referenced here so an IDE
+// "Optimize Imports" cannot drop the import.
+typedef _KeepSmartNetworkImage = SmartNetworkImage;
+typedef _KeepSiteLayout = SiteLayout; // Figma layout helpers (part files)
+const double _kKeepMath = math.pi;
+const Color _kKeepTokens = SiteColors.primary;
 
 // Default colors (fallback if CMS data unavailable)
 const Color _kDefaultGreen = Color(0xFF2D8C4E);

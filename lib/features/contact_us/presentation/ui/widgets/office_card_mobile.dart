@@ -27,30 +27,31 @@ class _OfficeCardMobile extends StatelessWidget {
         hasLink ? SystemMouseCursors.click : MouseCursor.defer,
         child: Container(
           width:   double.infinity,
-          padding: EdgeInsets.symmetric(
-              vertical: 22.h, horizontal: 16.w),
+          // Figma (iPhone): #F1F2ED card, radius 4, padding 25; 140 px
+          // icon; name Bold 24/150 %; detail SemiBold 18/150 % grey.
+          padding: const EdgeInsets.all(25),
           decoration: BoxDecoration(
-              color:        Colors.white,
-              borderRadius: BorderRadius.circular(12.r)),
+              color:        const Color(0xFFF1F2ED),
+              borderRadius: BorderRadius.circular(4)),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (office.iconUrl.isNotEmpty)
                 _officeIcon(
-                    office.iconUrl, 90.w, 90.h, primaryColor)
+                    office.iconUrl, 140, 140, primaryColor)
               else
                 Icon(Icons.location_on,
-                    size: 90.w, color: primaryColor),
-              SizedBox(height: 12.h),
+                    size: 140, color: primaryColor),
               Text(name,
                   textAlign: TextAlign.center,
                   style: StyleText.fontSize16Weight700.copyWith(
-                      color: primaryColor, fontSize: 14.sp)),
-              SizedBox(height: 4.h),
+                      color: primaryColor, fontSize: 24, height: 1.5)),
+              const SizedBox(height: 20),
               Text(text,
                   textAlign: TextAlign.center,
                   style: StyleText.fontSize13Weight400.copyWith(
-                      color: const Color(0xFF797979) /* Figma grey */, fontSize: 12.sp)),
+                      color: SiteColors.description, fontSize: 18,
+                      height: 1.5, fontWeight: FontWeight.w600)),
             ],
           ),
         ),

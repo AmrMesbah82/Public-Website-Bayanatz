@@ -17,8 +17,8 @@ class _ServicesBodyTablet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double screenW = MediaQuery.of(context).size.width;
-    final double hPad    = 16.w;
-    final double gap     = 10.w;
+    final double hPad    = 19.1.w;
+    final double gap     = 12.w;
     final double cardW   = (screenW - hPad * 2 - gap) / 2;
 
     final String sectionTitle =
@@ -46,13 +46,12 @@ class _ServicesBodyTablet extends StatelessWidget {
             duration:  const Duration(milliseconds: 600),
             child: Text(sectionTitle,
                 style: StyleText.fontSize14Weight400.copyWith(
-                    fontFamily: 'Cairo',
-                    fontSize:   16.sp,
+                    fontSize:   19.1.sp,
                     fontWeight: FontWeight.w800,
                     color:      primaryColor,
                     height:     1.4)),
           ),
-          SizedBox(height: 14.h),
+          SizedBox(height: 16.7.h),
 
           ...rows.asMap().entries.map((rowEntry) {
             final int  rowIdx    = rowEntry.key;
@@ -90,7 +89,7 @@ class _ServicesBodyTablet extends StatelessWidget {
                   ),
                 ));
           }),
-          SizedBox(height: 30.h),
+          SizedBox(height: 35.9.h),
 
           _Reveal(
             delay:     const Duration(milliseconds: 80),
@@ -98,13 +97,12 @@ class _ServicesBodyTablet extends StatelessWidget {
             duration:  const Duration(milliseconds: 600),
             child: Text(importantReads,
                 style: StyleText.fontSize14Weight400.copyWith(
-                    fontFamily: 'Cairo',
-                    fontSize:   18.sp,
+                    fontSize:   21.5.sp,
                     fontWeight: FontWeight.w800,
                     color:      primaryColor,
                     height:     1.4)),
           ),
-          SizedBox(height: 14.h),
+          SizedBox(height: 16.7.h),
 
           // ✅ Wrap supports any number of blog posts on tablet too
           Wrap(
@@ -123,7 +121,7 @@ class _ServicesBodyTablet extends StatelessWidget {
               ),
             )).toList(),
           ),
-          SizedBox(height: 30.h),
+          SizedBox(height: 35.9.h),
         ],
       ),
     );

@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:website_app/core/custom_svg.dart';
 import 'package:website_app/core/custom/1-custom_dropdwon.dart';
@@ -28,6 +29,11 @@ import '../../../../../core/widgets/scroll_with_footer.dart';
 import '../../../../../core/main_widgets/app_navbar.dart';
 import '../../../../../core/theme/appcolors.dart';
 import '../../../../../core/theme/new_theme.dart';
+import '../../../../../core/theme/site_tokens.dart';
+import '../../../../../core/responsive/site_layout.dart';
+import '../../../../../core/utils/form_validators.dart';
+import '../widgets/job_i18n.dart';
+import '../../../../../core/utils/page_meta.dart';
 import '../../../../../core/utils/flat_codec.dart';
 import '../../../data/models/job_model.dart';
 import '../widgets/job_unavailable_view.dart';
@@ -40,10 +46,12 @@ part '../widgets/doc_field_state.dart';
 part '../widgets/phone_field.dart';
 part '../widgets/url_validated_text_field.dart';
 
+// Imports used only from part files — referenced here so an IDE
+// "Optimize Imports" cannot drop them.
+const String Function(String) _kPhoneLabel = phoneCodeLabel;
+
 const Color _kGreen = Color(0xFF2D8C4E);
 const Color _kDivider = Color(0xFFDDE8DD);
-const Color _kHint = Color(0xFFBBBBBB);
-const Color _kLabel = Color(0xFF333333);
 
 Color _parsePrimary(HomeCmsState state) {
   final hex = switch (state) {
@@ -72,6 +80,9 @@ Color _parseBg(HomeCmsState state) {
   }
   return AppColors.background;
 }
+
+/// BUG-237: largest accepted PDF (Storage rules enforce the same limit).
+const int _kMaxPdfBytes = 10 * 1024 * 1024;
 
 // ── Bilingual helper (top-level, no context needed) ──────────────────────────
 String _t(String en, String ar, bool isRtl) => isRtl ? ar : en;
@@ -128,7 +139,6 @@ class _JobApplyPageState extends State<JobApplyPage> {
   bool _noLongerAvailable = false;
   bool _loadingJob = true,
       _submitting = false,
-      _submitted = false,
       _formSubmitted = false;
 
   final _firstNameCtrl = TextEditingController();
@@ -155,7 +165,7 @@ class _JobApplyPageState extends State<JobApplyPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(child: a),
-        SizedBox(width: 24.w),
+        SizedBox(width: 20.w), // Figma: 20 px between the two fields
         Expanded(child: b),
       ],
     );
@@ -199,6 +209,10 @@ class _JobApplyPageState extends State<JobApplyPage> {
         _loadingJob = false;
         _buildDocFields(data);
       });
+      // BUG-253: "Apply — <job> — Jobs — Bayanatz".
+      final bool ar = context.read<LanguageCubit>().state.isArabic;
+      PageMeta.setDetailTitle('/jobs/${widget.jobId}/apply',
+          _biText(data['title'] as Map<String, dynamic>?, ar));
     } else {
       setState(() => _loadingJob = false);
     }
@@ -214,8 +228,9 @@ class _JobApplyPageState extends State<JobApplyPage> {
     if (rawDocs.isEmpty) {
       // ── Fallback — legacy jobs without requiredDocuments ──
       _docFields = [
-        _DocFieldState(name: 'Resume', docType: 'PDF'),
-        _DocFieldState(name: 'Cover Letter', docType: 'Link'),
+        _DocFieldState(name: 'Resume', nameAr: 'السيرة الذاتية', docType: 'PDF'),
+        _DocFieldState(
+            name: 'Cover Letter', nameAr: 'خطاب التغطية', docType: 'Link'),
       ];
       return;
     }
@@ -223,10 +238,13 @@ class _JobApplyPageState extends State<JobApplyPage> {
     _docFields = rawDocs.map((d) {
       final map = d as Map<String, dynamic>;
       final name = map['name'] as String? ?? 'Document';
+      // BUG-200: the Arabic name entered in the admin (Name_Ar).
+      final nameAr = map['nameAr'] as String? ?? '';
       final type = map['docType'] as String? ?? 'PDF';
       // Older docs without the flag default to required.
       final required = map['isRequired'] as bool? ?? true;
-      return _DocFieldState(name: name, docType: type, isRequired: required);
+      return _DocFieldState(
+          name: name, nameAr: nameAr, docType: type, isRequired: required);
     }).toList();
 
   }
@@ -241,7 +259,7 @@ class _JobApplyPageState extends State<JobApplyPage> {
   /// Bilingual date — localized month name AND numerals (EN/AR).
   String _fmtDate(String? iso, bool isRtl) {
     if (iso == null || iso.isEmpty) return '—';
-    final dt = DateTime.tryParse(iso);
+    final dt = DateTime.tryParse(iso)?.toLocal(); // BUG-277: stored in UTC
     if (dt == null) return iso;
     return FormDateTimeHelper.formatDayMonthYear(dt, arabic: isRtl);
   }
@@ -262,9 +280,25 @@ class _JobApplyPageState extends State<JobApplyPage> {
       final file = result.files.first;
       final ext = file.name.split('.').last.toLowerCase();
 
+      // BUG-237: check the CONTENT, not only the extension — reject empty
+      // files, files that are not really PDFs (no "%PDF" header) and files
+      // bigger than the 10 MB limit.
+      final Uint8List? bytes = file.bytes;
+      String? error;
       if (ext != 'pdf') {
+        error = 'pdf_only';
+      } else if (bytes == null || bytes.isEmpty || file.size == 0) {
+        error = 'empty';
+      } else if (bytes.length > _kMaxPdfBytes) {
+        error = 'too_big';
+      } else if (bytes.length < 5 ||
+          bytes[0] != 0x25 || bytes[1] != 0x50 ||
+          bytes[2] != 0x44 || bytes[3] != 0x46) {
+        error = 'not_pdf';
+      }
+      if (error != null) {
         setState(() {
-          _docFields[index].error = 'pdf_only';
+          _docFields[index].error = error;
           _docFields[index].fileName = null;
           _docFields[index].fileBytes = null;
         });
@@ -296,12 +330,23 @@ class _JobApplyPageState extends State<JobApplyPage> {
     final ref = FirebaseStorage.instance.ref(
       'applications/${widget.jobId}/${DateTime.now().millisecondsSinceEpoch}_${safeName}_${doc.fileName}',
     );
-    final task = await ref.putData(
+    // BUG-237: show the upload progress instead of a bare spinner.
+    final uploadTask = ref.putData(
       doc.fileBytes!,
       SettableMetadata(contentType: 'application/pdf'),
-    ).onError((_, __) => null as TaskSnapshot);
-    if (task == null) return null;
-    return await task.ref.getDownloadURL().onError((_, __) => '');
+    );
+    final sub = uploadTask.snapshotEvents.listen((snap) {
+      if (!mounted || snap.totalBytes <= 0) return;
+      setState(() => doc.progress = snap.bytesTransferred / snap.totalBytes);
+    }, onError: (_) {});
+    try {
+      final task = await uploadTask;
+      return await task.ref.getDownloadURL();
+    } catch (_) {
+      return null;
+    } finally {
+      await sub.cancel();
+    }
   }
 
   // ── URL Validation Helper ──────────────────────────────────────────────────
@@ -335,96 +380,65 @@ class _JobApplyPageState extends State<JobApplyPage> {
     );
   }
 
+  /// BUG-239: set synchronously on the FIRST tap, so a double-click can
+  /// never start a second upload / write.
+  bool _inFlight = false;
+
+  bool get _phoneInvalid =>
+      _phoneCtrl.text.trim().isNotEmpty &&
+      !isPlausiblePhoneNumber(_countryCode, _phoneCtrl.text);
+
+  bool get _yearInvalid =>
+      _yearCtrl.text.trim().isNotEmpty && !isValidGraduationYear(_yearCtrl.text);
+
   Future<void> _submit(bool isRtl) async {
+    if (_inFlight || _submitting) return;
     setState(() => _formSubmitted = true);
 
     // ── Validate required personal fields ──
-    // BUG-130: same feedback as the Contact form (fields marked + one toast).
+    // BUG-164: inline validation only (red borders + messages) — no grey
+    // full-width SnackBar. BUG-238: the same phone / year rules as Contact.
     if (_firstNameCtrl.text.trim().isEmpty ||
         _lastNameCtrl.text.trim().isEmpty ||
         _emailCtrl.text.trim().isEmpty ||
         !_isValidEmail(_emailCtrl.text) ||
         _phoneCtrl.text.trim().isEmpty ||
-        _yearCtrl.text.trim().isEmpty) {
-      _toast('Please complete the highlighted fields.',
-          'يرجى استكمال الحقول المحددة باللون الأحمر.', isRtl);
+        _phoneInvalid ||
+        _yearCtrl.text.trim().isEmpty ||
+        _yearInvalid) {
       return;
     }
 
     // ── Validate required doc fields (respect admin's Required/Optional switch) ──
+    // BUG-164: every problem is shown inline under its field.
     for (final doc in _docFields) {
-      if (!doc.isRequired) continue;
       final missing = doc.docType == 'PDF'
           ? doc.fileBytes == null
           : doc.linkController.text.trim().isEmpty;
-      if (missing) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              doc.docType == 'PDF'
-                  ? _t(
-                      '${doc.name} is required. Please upload a PDF file.',
-                      '${doc.name} مطلوب. يرجى رفع ملف PDF.',
-                      isRtl,
-                    )
-                  : _t(
-                      '${doc.name} is required. Please enter a link.',
-                      '${doc.name} مطلوب. يرجى إدخال رابط.',
-                      isRtl,
-                    ),
-            ),
-          ),
-        );
-        return;
-      }
-    }
-
-    // ── Validate all Link-type doc fields for valid URL ──
-    for (final doc in _docFields) {
+      if (doc.isRequired && missing) return;
       if (doc.docType == 'Link') {
         final link = doc.linkController.text.trim();
-        if (link.isNotEmpty && !_isValidUrl(link)) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                _t(
-                  'Please enter a valid URL for ${doc.name} (e.g., https://example.com/document)',
-                  'يرجى إدخال رابط صالح لـ ${doc.name} (مثال: https://example.com/document)',
-                  isRtl,
-                ),
-              ),
-              duration: const Duration(seconds: 4),
-            ),
-          );
-          return;
-        }
+        if (link.isNotEmpty && !_isValidUrl(link)) return;
       }
+      if (doc.docType == 'PDF' && doc.error != null) return;
     }
 
-    // ── Check for PDF upload errors ──
-    for (final doc in _docFields) {
-      if (doc.docType == 'PDF' && doc.error != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _t(
-                'Please upload a valid PDF file for ${doc.name}.',
-                'يرجى رفع ملف PDF صالح لـ ${doc.name}.',
-                isRtl,
-              ),
-            ),
-          ),
-        );
-        return;
-      }
-    }
-
+    _inFlight = true;
     setState(() => _submitting = true);
 
     // ── Upload all PDF doc fields ──
     for (final doc in _docFields) {
       if (doc.docType == 'PDF' && doc.fileBytes != null) {
         doc.uploadedUrl = await _uploadDocFile(doc);
+        if (!mounted) return;
+        if (doc.uploadedUrl == null || doc.uploadedUrl!.isEmpty) {
+          _inFlight = false;
+          setState(() => _submitting = false);
+          _toast("We couldn't upload ${doc.name}. Please try again.",
+              'تعذر رفع ${doc.nameAr.isNotEmpty ? doc.nameAr : doc.name}. يرجى المحاولة مرة أخرى.',
+              isRtl);
+          return;
+        }
       }
     }
 
@@ -527,6 +541,7 @@ class _JobApplyPageState extends State<JobApplyPage> {
     }).then<Object?>((_) => null).onError((e, __) => e);
     if (!mounted) return;
     if (submitFailed != null) {
+      _inFlight = false;
       setState(() => _submitting = false);
       // BUG-104: the rules refuse a second document with the same e-mail.
       final duplicate = submitFailed is FirebaseException &&
@@ -544,10 +559,9 @@ class _JobApplyPageState extends State<JobApplyPage> {
         .update({'totalApplications': FieldValue.increment(1)})
         .catchError((_) {});
     if (!mounted) return;
-    setState(() {
-      _submitting = false;
-      _submitted = true;
-    });
+    // BUG-260: a dedicated success address — Back no longer reopens the
+    // filled form, and the page offers a way back to jobs / home.
+    context.go('/jobs/${widget.jobId}/applied');
   }
 
   @override
@@ -586,7 +600,6 @@ class _JobApplyPageState extends State<JobApplyPage> {
               ],
             ),
           );
-        if (_submitted) return _buildSuccessScreen(primary, bgColor, isRtl);
 
         // BUG-99: removed / ended / draft jobs no longer show the form.
         if (_job == null) {
@@ -602,14 +615,14 @@ class _JobApplyPageState extends State<JobApplyPage> {
             reason: openState == JobOpenState.notStarted
                 ? JobUnavailableReason.notStarted
                 : JobUnavailableReason.closed,
-            opensOn: DateTime.tryParse(_str('hiringStartDate')),
+            opensOn: DateTime.tryParse(_str('hiringStartDate'))?.toLocal(), // BUG-277
           );
         }
 
         // BUG-116 / BUG-134: phones get one field per row and 16 px margins.
         final double screenW = MediaQuery.sizeOf(context).width;
         _isPhone = screenW < 600;
-        final double contentW = _isPhone ? screenW - 32 : 1000.w;
+        final double contentW = SiteLayout.contentWidth(context);
 
         final title = _biText(_job?['title'] as Map<String, dynamic>?, isRtl);
 
@@ -626,50 +639,49 @@ class _JobApplyPageState extends State<JobApplyPage> {
                       width: double.infinity,
                       child: Column(
                         children: [
-                          SizedBox(height: 40.h),
+                          SizedBox(height: _isPhone ? 60 : 52.w),
                           Center(
                             child: SizedBox(
                               width: contentW,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  // BUG-178 / BUG-242: shared page-title style.
                                   Text(
                                     _t('Applying For Job', 'التقديم على وظيفة', isRtl),
-                                    style: StyleText.fontSize16Weight700.copyWith(
-                                      fontSize: 36.sp,
-                                      fontWeight: FontWeight.w700,
-                                      color: primary,
-                                    ),
+                                    style: SiteText.pageTitle(context, color: primary),
                                   ),
-                                  SizedBox(height: 24.h),
+                                  SizedBox(height: _isPhone ? 24.h : 38.w),
+                                  // Figma: white card, radius 15, padding 50.
                                   Container(
                                     width: double.infinity,
-                                    padding: EdgeInsets.all(15.sp),
+                                    padding: EdgeInsets.all(_isPhone ? 15 : 50.w),
                                     decoration: BoxDecoration(
                                       color: AppColors.card,
-                                      borderRadius: BorderRadius.circular(8.r),
+                                      borderRadius: BorderRadius.circular(15),
                                     ),
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         _buildJobSummary(title, primary, bgColor, isRtl),
-                                        SizedBox(height: 28.h),
+                                        SizedBox(height: _isPhone ? 28.h : 50.w),
+                                        // Figma: #F1F2ED form box, radius 15, padding 20.
                                         Container(
                                           decoration: BoxDecoration(
                                             color: Color(0xFFF1F2ED),
-                                            borderRadius: BorderRadius.circular(8.r),
+                                            borderRadius: BorderRadius.circular(_isPhone ? 8.r : 15.r),
                                           ),
                                           child: Padding(
                                             padding: EdgeInsets.symmetric(
-                                              horizontal: 15.w,
-                                              vertical: 15.h,
+                                              horizontal: _isPhone ? 15.w : 20.w,
+                                              vertical: _isPhone ? 15.h : 20.w,
                                             ),
                                             child: Column(
                                               children: [
                                                 _buildPersonalInfo(primary, isRtl),
-                                                SizedBox(height: 28.h),
+                                                SizedBox(height: _isPhone ? 28.h : 20.w),
                                                 _buildProfileInfo(primary, isRtl),
-                                                SizedBox(height: 24.h),
+                                                SizedBox(height: _isPhone ? 24.h : 4.w),
                                                 _buildSendButton(primary, isRtl),
                                               ],
                                             ),
@@ -678,7 +690,7 @@ class _JobApplyPageState extends State<JobApplyPage> {
                                       ],
                                     ),
                                   ),
-                                  SizedBox(height: 64.h),
+                                  SizedBox(height: _isPhone ? 64.h : 20.w),
                                 ],
                               ),
                             ),
@@ -699,123 +711,51 @@ class _JobApplyPageState extends State<JobApplyPage> {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  //  SUCCESS SCREEN
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildSuccessScreen(Color primary, Color bgColor, bool isRtl) {
-    return Directionality(
-      textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
-      child: Scaffold(
-        backgroundColor: bgColor, // branding background from model
-        body: Column(
-          children: [
-            AppNavbar(currentRoute: '/careers'),
-            Expanded(
-              child: ScrollWithFooter(
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Column(
-                    children: [
-                      SizedBox(height: 80.h),
-                      Center(
-                        child: SizedBox(
-                          width: 1000.w,
-                          child: Container(
-                            padding: EdgeInsets.all(40.sp),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16.r),
-                            ),
-                            child: Column(
-                              children: [
-                                SvgPicture.asset(
-                                  'assets/images/success_send.svg',
-                                  height: 140.h,
-                                  fit: BoxFit.contain,
-                                ),
-                                SizedBox(height: 24.h),
-                                Text(
-                                  _t(
-                                    "YOU'VE OFFICIALLY APPLIED — AND WE'RE EXCITED TO LEARN MORE ABOUT YOU!",
-                                    'لقد تقدّمت رسمياً — ونحن متحمسون للتعرف عليك أكثر!',
-                                    isRtl,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                  style: StyleText.fontSize16Weight700.copyWith(
-                                    fontSize: 18.sp,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                                SizedBox(height: 16.h),
-                                Text(
-                                  _t(
-                                    'Your application has been successfully received. Our team will review your submission and contact you if your qualifications match our current opportunities. Thank you for considering Bayanatz as the next step in your career.',
-                                    'تم استلام طلبك بنجاح. سيقوم فريقنا بمراجعة طلبك والتواصل معك إذا كانت مؤهلاتك تتناسب مع الفرص المتاحة لدينا. شكراً لاختيارك بيانات محطةً لمسيرتك المهنية.',
-                                    isRtl,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                  style: StyleText.fontSize13Weight400.copyWith(
-                                    fontSize: 13.sp,
-                                    height: 1.6,
-                                    color: Colors.black54,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 64.h),
-                    ],
-                  ),
-                ),
-                // BUG-65: footer scrolls with the page (was pinned).
-                footer: const AppFooter(),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
   //  JOB SUMMARY
   // ═══════════════════════════════════════════════════════════════════════════
 
+  /// BUG-234: "Cairo, Egypt" for On Site / Hybrid jobs, "Remote" for remote.
+  String _locationValue(bool isRtl) {
+    final wt = WorkTypeExt.fromString(_str('workType'));
+    if (wt == WorkType.remote) return _t('Remote', 'عن بُعد', isRtl);
+    return jobLocation(context, _str('location'), isRtl);
+  }
+
   Widget _buildJobSummary(
       String title, Color primary, Color bgColor, bool isRtl) {
+    final skills = ((_job?['requiredSkills'] as List<dynamic>?) ?? [])
+        .map((s) => _biText(s['name'] as Map<String, dynamic>?, isRtl))
+        .where((s) => s.trim().isNotEmpty)
+        .toList();
+    final String location = _locationValue(isRtl);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Figma: Cairo Medium 30 black, then the info rows (Medium/SemiBold 24).
         Text(
           title.isEmpty ? _t('Untitled', 'بدون عنوان', isRtl) : title,
-          style: StyleText.fontSize16Weight700.copyWith(
-            fontSize: 16.sp,
-            fontWeight: FontWeight.w700,
-            color: _kLabel,
-          ),
+          style: SiteText.cardTitle(context, color: Colors.black).copyWith(
+              fontSize: _isPhone ? 16 : 30.sp, fontWeight: FontWeight.w500),
         ),
-        SizedBox(height: 12.h),
+        SizedBox(height: _isPhone ? 12.h : 20.w),
         Divider(color: _kDivider, thickness: 1),
-        SizedBox(height: 12.h),
+        SizedBox(height: _isPhone ? 12.h : 20.w),
         _summaryRow(
-          _t('Hire Date:', 'تاريخ التعيين:', isRtl),
+          _t('Hire Date:', 'تاريخ التوظيف:', isRtl), // BUG-201
           _fmtDate(_str('hiringStartDate'), isRtl),
-          _t('Hire End Date:', 'تاريخ انتهاء التعيين:', isRtl),
+          _t('Hire End Date:', 'تاريخ انتهاء التوظيف:', isRtl),
           _fmtDate(_str('hiringEndDate'), isRtl),
           primary,
         ),
-        SizedBox(height: 6.h),
+        SizedBox(height: _isPhone ? 8.h : 8.w),
         _summaryRow(
           _t('Work Type:', 'نوع العمل:', isRtl),
           WorkTypeExt.fromString(_str('workType')).localized(isRtl),
-          '',
-          '',
+          location.isEmpty ? '' : _t('Location:', 'الموقع:', isRtl),
+          location,
           primary,
         ),
-        SizedBox(height: 6.h),
+        SizedBox(height: _isPhone ? 8.h : 8.w),
         _summaryRow(
           _t('Employment Type:', 'نوع التوظيف:', isRtl),
           EmploymentTypeExt.fromString(_str('employmentType')).localized(isRtl),
@@ -827,19 +767,17 @@ class _JobApplyPageState extends State<JobApplyPage> {
           ),
           primary,
         ),
-        SizedBox(height: 6.h),
+        SizedBox(height: _isPhone ? 8.h : 8.w),
         _summaryRow(
           _t('Experience Level:', 'مستوى الخبرة:', isRtl),
           ExperienceLevelExt.fromString(_str('experienceLevel')).localized(isRtl),
-          _t('Compensation Range:', 'نطاق الراتب:', isRtl),
-          // Figma (Apply, 7126:49672): "5000 - 10000" — no currency.
-          _num(
-            '${(_job?['salaryMin'] as num?)?.toInt() ?? 0} - ${(_job?['salaryMax'] as num?)?.toInt() ?? 0}',
-            isRtl,
-          ),
+          _t('Compensation Range:', 'نطاق الراتب:', isRtl), // BUG-201
+          // BUG-111: the salary always carries its currency.
+          jobSalaryRange(_job?['salaryMin'] as num?, _job?['salaryMax'] as num?,
+              _str('salaryCurrency'), isRtl),
           primary,
         ),
-        SizedBox(height: 6.h),
+        SizedBox(height: _isPhone ? 8.h : 8.w),
         _summaryText(
           _t('Required Qualification:', 'المؤهل المطلوب:', isRtl),
           _biText(
@@ -848,49 +786,20 @@ class _JobApplyPageState extends State<JobApplyPage> {
           ),
           primary,
         ),
-        SizedBox(height: 12.h),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(
-              _t('Skills:', 'المهارات:', isRtl),
-              style: StyleText.fontSize13Weight500.copyWith(
-                fontSize: 13.sp,
-                fontWeight: FontWeight.w500,
-                color: _kLabel,
-              ),
+        if (skills.isNotEmpty) ...[
+          SizedBox(height: _isPhone ? 12.h : 8.w),
+          // BUG-206 / BUG-250: shared chip style, label on the first row.
+          JobSkillsRow(
+            label: _t('Skills:', 'المهارات:', isRtl),
+            skills: skills,
+            compact: _isPhone,
+            labelStyle: StyleText.fontSize13Weight500.copyWith(
+              fontSize: _isPhone ? 14 : 24.sp,
+              fontWeight: FontWeight.w500,
+              color: SiteColors.description,
             ),
-            SizedBox(width: 10.w),
-            Expanded(
-              child: Wrap(
-                spacing: 8.w,
-                runSpacing: 6.h,
-                children: ((_job?['requiredSkills'] as List<dynamic>?) ?? [])
-                    .map(
-                      (s) => Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 4.h,
-                    ),
-                    decoration: BoxDecoration(
-                      color: bgColor,
-                      borderRadius: BorderRadius.circular(6.r),
-                      border: Border.all(color: _kDivider),
-                    ),
-                    child: Text(
-                      _biText(s['name'] as Map<String, dynamic>?, isRtl),
-                      style: StyleText.fontSize12Weight400.copyWith(
-                        fontSize: 12.sp,
-                        color: _kLabel,
-                      ),
-                    ),
-                  ),
-                )
-                    .toList(),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ],
     );
   }
@@ -899,46 +808,50 @@ class _JobApplyPageState extends State<JobApplyPage> {
   //  PERSONAL INFORMATION
   // ═══════════════════════════════════════════════════════════════════════════
 
+  /// BUG-207: Figma section titles — Cairo SemiBold 32 primary.
+  Widget _sectionTitle(String text, Color primary) => Text(
+        text,
+        style: SiteText.sectionTitle(context, color: primary)
+            .copyWith(fontWeight: FontWeight.w600),
+      );
+
   Widget _buildPersonalInfo(Color primary, bool isRtl) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          _t('Personal Information', 'المعلومات الشخصية', isRtl),
-          style: StyleText.fontSize16Weight700.copyWith(
-            fontSize: 16.sp,
-            fontWeight: FontWeight.w700,
-            color: primary,
-          ),
-        ),
-        SizedBox(height: 16.h),
-        // BUG-116: stacked on phones. Labels / "Text Here" hints as in Figma
-        // (Apply form, 7126:49672 — only Resume / Cover Letter carry a *).
+        _sectionTitle(_t('Personal Information', 'المعلومات الشخصية', isRtl), primary),
+        SizedBox(height: _isPhone ? 16.h : 20.w),
+        // BUG-116: stacked on phones. BUG-128: every required field shows
+        // "*". BUG-129: field-specific hints. BUG-165 / BUG-233: one height
+        // and one label style for every field (phone included).
         _pair(
           CustomTextField(
             label: _t('First Name', 'الاسم الأول', isRtl),
-            hint: _t('Text Here', 'أدخل النص هنا', isRtl),
+            required: true,
+            hint: _t('e.g. Ahmed', 'مثال: أحمد', isRtl),
             controller: _firstNameCtrl,
-            height: 36,
+            height: 42,
             fillColor: Colors.white,
             submitted: _formSubmitted,
           ),
           CustomTextField(
             label: _t('Last Name', 'اسم العائلة', isRtl),
-            hint: _t('Text Here', 'أدخل النص هنا', isRtl),
+            required: true,
+            hint: _t('e.g. Hassan', 'مثال: حسن', isRtl),
             controller: _lastNameCtrl,
-            height: 36,
+            height: 42,
             fillColor: Colors.white,
             submitted: _formSubmitted,
           ),
         ),
-        SizedBox(height: 10.h),
+        SizedBox(height: _isPhone ? 12.h : 20.w),
         _pair(
           CustomTextField(
             label: _t('Email', 'البريد الإلكتروني', isRtl),
-            hint: _t('Text Here', 'أدخل النص هنا', isRtl),
+            required: true,
+            hint: _t('e.g. name@example.com', 'مثال: name@example.com', isRtl),
             controller: _emailCtrl,
-            height: 36,
+            height: 42,
             fillColor: Colors.white,
             submitted: _formSubmitted,
             keyboardType: TextInputType.emailAddress,
@@ -953,6 +866,9 @@ class _JobApplyPageState extends State<JobApplyPage> {
             label: _t('Phone', 'رقم الهاتف', isRtl), // Figma
             controller: _phoneCtrl,
             submitted: _formSubmitted,
+            errorText: _formSubmitted && _phoneInvalid
+                ? phoneInvalidMessage(isRtl)
+                : null,
             selectedCode: _countryCode,
             onCodeChanged: (v) {
               if (v != null) setState(() => _countryCode = v);
@@ -961,17 +877,22 @@ class _JobApplyPageState extends State<JobApplyPage> {
             primaryColor: primary,
           ),
         ),
-        SizedBox(height: 10.h),
+        SizedBox(height: _isPhone ? 12.h : 20.w),
         _pair(
           CustomTextField(
             label: _t('Year Of Graduation', 'سنة التخرج', isRtl),
-            hint: _t('Text Here', 'أدخل النص هنا', isRtl),
+            required: true,
+            hint: _t('e.g. 2021', 'مثال: 2021', isRtl),
             controller: _yearCtrl,
-            height: 36,
+            height: 42,
             fillColor: Colors.white,
             onlyDigits: true,
             maxLength: 4,
             submitted: _formSubmitted,
+            // BUG-238: 1950 … current year + 6.
+            errorText: _formSubmitted && _yearInvalid
+                ? yearInvalidMessage(isRtl)
+                : null,
           ),
           const SizedBox(), // Figma: Year Of Graduation alone on its row
         ),
@@ -987,15 +908,8 @@ class _JobApplyPageState extends State<JobApplyPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          _t('Profile Information', 'معلومات الملف الشخصي', isRtl),
-          style: StyleText.fontSize16Weight700.copyWith(
-            fontSize: 16.sp,
-            fontWeight: FontWeight.w700,
-            color: primary,
-          ),
-        ),
-        SizedBox(height: 16.h),
+        _sectionTitle(_t('Profile Information', 'معلومات الملف الشخصي', isRtl), primary),
+        SizedBox(height: _isPhone ? 16.h : 20.w),
 
         // ── Dynamically render each required document ──
         ...List.generate(_docFields.length, (i) {
@@ -1010,6 +924,32 @@ class _JobApplyPageState extends State<JobApplyPage> {
     );
   }
 
+  /// BUG-236 / BUG-200: one label for every document — Arabic name in
+  /// Arabic, red "*" when required, "(Optional)" otherwise, same style for
+  /// PDF and Link documents.
+  String _docLabel(_DocFieldState doc, bool isRtl) => doc.isRequired
+      ? doc.label(isRtl)
+      : '${doc.label(isRtl)} (${_t('Optional', 'اختياري', isRtl)})';
+
+  String _docErrorText(String? code, bool isRtl) {
+    switch (code) {
+      case 'empty':
+        return _t('This file is empty. Please choose another PDF.',
+            'هذا الملف فارغ. يرجى اختيار ملف PDF آخر.', isRtl);
+      case 'too_big':
+        return _t('The file is larger than 10 MB. Please upload a smaller PDF.',
+            'حجم الملف أكبر من 10 ميجابايت. يرجى رفع ملف PDF أصغر.', isRtl);
+      case 'not_pdf':
+        return _t('This file is not a valid PDF. Please upload a PDF file only.',
+            'هذا الملف ليس ملف PDF صالحًا. يرجى رفع ملف PDF فقط.', isRtl);
+      case 'pdf_only':
+        return _t('Invalid file type. Please upload a PDF file only.',
+            'نوع الملف غير صالح. يرجى رفع ملف PDF فقط.', isRtl);
+      default:
+        return _t('This field is required.', 'هذا الحقل مطلوب', isRtl);
+    }
+  }
+
   /// Builds a PDF upload box for a given document requirement
   Widget _buildPdfUploadField(
       int index, _DocFieldState doc, Color primary, bool isRtl) {
@@ -1017,145 +957,159 @@ class _JobApplyPageState extends State<JobApplyPage> {
     final bool missingRequired =
         _formSubmitted && doc.isRequired && doc.fileName == null;
     final bool hasError = doc.error != null || missingRequired;
+    final double? progress = _submitting ? doc.progress : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Label ── (BUG-128: required documents get the red "*")
-        requiredLabel(
-          doc.isRequired
-              ? doc.name
-              : '${doc.name} (${_t('Optional', 'اختياري', isRtl)})',
-          required: doc.isRequired,
-          style: StyleText.fontSize13Weight500.copyWith(
-            fontSize: 13.sp,
-            fontWeight: FontWeight.w500,
-            color: _kLabel,
-          ),
-        ),
-        SizedBox(height: 8.h),
+        // ── Label ── (BUG-128 / BUG-236)
+        requiredLabel(_docLabel(doc, isRtl), required: doc.isRequired),
+        const SizedBox(height: 8),
         // ── Upload box ──
         Stack(
           children: [
-            GestureDetector(
+            Semantics(
+              button: true,
+              label: _docLabel(doc, isRtl),
+              child: InkWell(
               onTap: doc.fileName != null ? null : () => _pickFile(index),
+              borderRadius: BorderRadius.circular(8),
               child: Container(
                 width: double.infinity,
-                height: 130.h,
+                // Figma: white drop zone 260 px tall, radius 8.
+                constraints: BoxConstraints(minHeight: _isPhone ? 150.h : 260.w),
+                padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 12.w),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(8.r),
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: hasError ? Colors.red : Colors.transparent,
+                    color: hasError ? SiteColors.error : Colors.transparent,
                     width: 1.5,
                   ),
                 ),
                 child: doc.fileName != null
-                    ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.picture_as_pdf,
-                          color: primary, size: 28.sp),
-                      SizedBox(height: 6.h),
-                      Text(
-                        doc.fileName!,
-                        style: StyleText.fontSize12Weight400.copyWith(
-                          fontSize: 12.sp,
-                          color: _kLabel,
+                    ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.picture_as_pdf, color: primary, size: 28),
+                    const SizedBox(height: 6),
+                    Text(
+                      doc.fileName!,
+                      textAlign: TextAlign.center,
+                      style: StyleText.fontSize12Weight400.copyWith(
+                        fontSize: 14.sp,
+                        color: SiteColors.textStrong,
+                      ),
+                    ),
+                    // BUG-237: upload progress.
+                    if (progress != null) ...[
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: 220,
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          color: primary,
+                          backgroundColor: SiteColors.page,
+                          minHeight: 6,
+                          borderRadius: BorderRadius.circular(3),
                         ),
                       ),
+                      const SizedBox(height: 4),
+                      Text('${(progress * 100).round()}%',
+                          style: SiteText.meta(context)),
                     ],
-                  ),
+                  ],
                 )
                     : Column(
+                  mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     CustomSvg(
                       assetPath: "assets/images/upload-image.svg",
-                      width: 40.w,
-                      height: 40.h,
-                      fit: BoxFit.fill,
+                      width: _isPhone ? 40 : 100.w, // Figma 100
+                      height: _isPhone ? 40 : 100.w,
+                      fit: BoxFit.contain,
                     ),
-                    SizedBox(height: 6.h),
+                    SizedBox(height: _isPhone ? 6 : 13.w),
+                    // BUG-207: Figma "Drag & Drop files here" · "Or" · "Browse Files".
                     Text(
-                      _t(
-                        'Drag & Drop your PDF here',
-                        'اسحب وأفلت ملف PDF هنا',
-                        isRtl,
-                      ),
+                      _t('Drag & Drop files here', 'اسحب وأفلت الملفات هنا', isRtl),
+                      // Figma: Cairo Medium 20 #2D2D2D.
                       style: StyleText.fontSize12Weight400.copyWith(
-                        fontSize: 12.sp,
-                        color: Colors.black54,
+                        fontSize: _isPhone ? 15.sp : 20.sp,
+                        fontWeight: FontWeight.w500,
+                        color: SiteColors.textStrong,
                       ),
                     ),
-                    SizedBox(height: 4.h),
+                    SizedBox(height: _isPhone ? 2 : 10.w),
+                    Text(_t('Or', 'أو', isRtl),
+                        style: _isPhone
+                            ? SiteText.meta(context)
+                            : SiteText.meta(context, color: SiteColors.textStrong)
+                                .copyWith(fontSize: 20.sp)),
+                    SizedBox(height: _isPhone ? 6 : 10.w),
+                    // Figma: "Browse Files" 200×37, radius 10, Medium 20 white.
                     Container(
+                      constraints: BoxConstraints(
+                          minWidth: _isPhone ? 0 : 200.w,
+                          minHeight: _isPhone ? 0 : 37.w),
+                      alignment: _isPhone ? null : Alignment.center,
                       padding: EdgeInsets.symmetric(
                         horizontal: 20.w,
-                        vertical: 6.h,
+                        vertical: _isPhone ? 8 : 0,
                       ),
                       decoration: BoxDecoration(
                         color: primary,
-                        borderRadius: BorderRadius.circular(6.r),
+                        borderRadius: BorderRadius.circular(_isPhone ? 6 : 10.r),
                       ),
                       child: Text(
                         _t('Browse Files', 'استعراض الملفات', isRtl),
                         style: StyleText.fontSize12Weight600.copyWith(
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w600,
+                          fontSize: _isPhone ? 14.sp : 20.sp,
+                          fontWeight: _isPhone ? FontWeight.w600 : FontWeight.w500,
                           color: Colors.white,
                         ),
                       ),
                     ),
+                    const SizedBox(height: 6),
+                    // BUG-237: the limits are shown up front.
+                    Text(_t('PDF only · max 10 MB', 'PDF فقط · بحد أقصى 10 ميجابايت', isRtl),
+                        style: SiteText.meta(context)),
                   ],
                 ),
               ),
+              ),
             ),
-            // ── Red remove button ──
-            if (doc.fileName != null)
-              Positioned(
-                top: 8.h,
-                right: 8.w,
-                child: GestureDetector(
-                  onTap: () => _removeFile(index),
-                  child: Container(
-                    width: 20.sp,
-                    height: 20.sp,
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.remove,
-                      color: Colors.white,
-                      size: 14.sp,
+            // ── Remove button ──
+            if (doc.fileName != null && !_submitting)
+              PositionedDirectional(
+                top: 8,
+                end: 8,
+                child: Semantics(
+                  button: true,
+                  label: _t('Remove file', 'إزالة الملف', isRtl),
+                  child: InkWell(
+                    onTap: () => _removeFile(index),
+                    customBorder: const CircleBorder(),
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: const BoxDecoration(
+                        color: SiteColors.error,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.close, color: Colors.white, size: 16),
                     ),
                   ),
                 ),
               ),
           ],
         ),
-        // ── PDF error message ──
+        // ── Error message (BUG-131: same style as every other field) ──
         if (hasError) ...[
-          SizedBox(height: 4.h),
-          Text(
-            doc.error != null
-                ? _t(
-                    'Invalid file type. Please upload a PDF file only.',
-                    'نوع الملف غير صالح. يرجى رفع ملف PDF فقط.',
-                    isRtl,
-                  )
-                : _t(
-                    'This field is required.',
-                    'هذا الحقل مطلوب',
-                    isRtl,
-                  ),
-            style: StyleText.fontSize11Weight400.copyWith(
-              fontSize: 11.sp,
-              color: Colors.red,
-            ),
-          ),
+          const SizedBox(height: SiteText.errorGap),
+          Text(_docErrorText(doc.error, isRtl), style: customFieldErrorStyle()),
         ],
         SizedBox(height: 16.h),
       ],
@@ -1169,9 +1123,7 @@ class _JobApplyPageState extends State<JobApplyPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _UrlValidatedTextField(
-          label: doc.isRequired
-              ? doc.name
-              : '${doc.name} (${_t('Optional', 'اختياري', isRtl)})',
+          label: _docLabel(doc, isRtl),
           isRequired: doc.isRequired,
           hint: _t('Insert Link', 'أدخل الرابط', isRtl), // Figma
           controller: doc.linkController,
@@ -1189,35 +1141,34 @@ class _JobApplyPageState extends State<JobApplyPage> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildSendButton(Color primary, bool isRtl) {
-    return GestureDetector(
-      onTap: _submitting ? null : () => _submit(isRtl),
-      child: Container(
-        width: double.infinity,
-        height: 48.h,
-        decoration: BoxDecoration(
-          color: primary,
-          borderRadius: BorderRadius.circular(8.r),
+    // BUG-239: disabled while sending. BUG-146: "Send" (Title Case, like the
+    // Contact form). BUG-207: Figma 26 px label. BUG-257: focusable button.
+    return SizedBox(
+      width: double.infinity,
+      height: _isPhone ? 52 : 57.w, // Figma 57
+      child: ElevatedButton(
+        onPressed: (_submitting || _inFlight) ? null : () => _submit(isRtl),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primary,
+          disabledBackgroundColor: primary.withOpacity(0.7),
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        child: Center(
-          child: _submitting
-              ? SizedBox(
-            width: 20.sp,
-            height: 20.sp,
-            child: const CircularProgressIndicator(
-              color: Colors.white,
-              strokeWidth: 2,
-            ),
-          )
-              : Text(
-            // Figma (Apply, 7126:49672): "SEND".
-            _t('SEND', 'إرسال', isRtl),
-            style: StyleText.fontSize16Weight700.copyWith(
-              fontSize: 16.sp,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
-          ),
-        ),
+        child: _submitting
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+              )
+            : Text(
+                _t('Send', 'إرسال', isRtl),
+                // Figma: Cairo Bold 26 #F5F5F5.
+                style: StyleText.fontSize16Weight700.copyWith(
+                  fontSize: _isPhone ? 20 : 26.sp,
+                  fontWeight: FontWeight.w700,
+                  color: _isPhone ? Colors.white : const Color(0xFFF5F5F5),
+                ),
+              ),
       ),
     );
   }
@@ -1233,13 +1184,27 @@ class _JobApplyPageState extends State<JobApplyPage> {
       String v2,
       Color primary,
       ) {
+    if (_isPhone) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (l1.isNotEmpty) _summaryText(l1, v1, primary),
+          if (l2.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            _summaryText(l2, v2, primary),
+          ],
+        ],
+      );
+    }
+    // Figma: second column 830 px into the 1300 px card body.
     return Row(
       children: [
-        if (l1.isNotEmpty) Expanded(child: _summaryText(l1, v1, primary)),
-        if (l2.isNotEmpty) ...[
-          SizedBox(width: 16.w),
-          Expanded(child: _summaryText(l2, v2, primary)),
-        ],
+        Expanded(
+            flex: 830,
+            child: l1.isNotEmpty ? _summaryText(l1, v1, primary) : const SizedBox()),
+        Expanded(
+            flex: 470,
+            child: l2.isNotEmpty ? _summaryText(l2, v2, primary) : const SizedBox()),
       ],
     );
   }
@@ -1250,16 +1215,19 @@ class _JobApplyPageState extends State<JobApplyPage> {
         children: [
           TextSpan(
             text: '$label ',
+            // Figma: label Medium 24 grey, value SemiBold 24 primary.
             style: StyleText.fontSize13Weight500.copyWith(
-              fontSize: 13.sp,
+              fontSize: _isPhone ? 14 : 24.sp,
+              height: _isPhone ? 20 / 14 : 1.4,
               fontWeight: FontWeight.w500,
-              color: _kLabel,
+              color: SiteColors.description,
             ),
           ),
           TextSpan(
             text: value,
             style: StyleText.fontSize13Weight600.copyWith(
-              fontSize: 13.sp,
+              height: _isPhone ? 20 / 14 : 1.4,
+              fontSize: _isPhone ? 14 : 24.sp,
               fontWeight: FontWeight.w600,
               color: primary,
             ),

@@ -38,15 +38,8 @@ enum _SlideDirection { fromBottom, fromLeft, fromRight, fromTop }
 
 /// Rejects obviously fake numbers ("0000000000", "1111111…") and checks the
 /// mobile format for Egypt / Saudi Arabia (same rule as the sendOTP function).
-bool isPlausiblePhone(String countryCode, String raw) {
-  var digits = raw.replaceAll(RegExp(r'\D'), '');
-  if (digits.startsWith('0')) digits = digits.substring(1);
-  if (digits.length < 7 || digits.length > 14) return false;
-  if (RegExp(r'^(\d)\1+$').hasMatch(digits)) return false;
-  if (countryCode == '+20') return RegExp(r'^1[0125]\d{8}$').hasMatch(digits);
-  if (countryCode == '+966') return RegExp(r'^5\d{8}$').hasMatch(digits);
-  return true;
-}
+bool isPlausiblePhone(String countryCode, String raw) =>
+    isPlausiblePhoneNumber(countryCode, raw); // BUG-238: shared rule
 
 /// Maps the sendOTP error code (or an old raw "INTERNAL") to EN / AR text.
 String otpErrorMessage(String code, bool ar) {

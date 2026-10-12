@@ -4,10 +4,13 @@ class _BlogCardDesktop extends StatefulWidget {
   final BlogPostModel post;
   final bool          isRtl;
   final Color         primaryColor;
+  /// Card width (the parent row uses IntrinsicHeight, so no LayoutBuilder).
+  final double?       width;
   const _BlogCardDesktop({
     required this.post,
     this.isRtl = false,
     required this.primaryColor,
+    this.width,
   });
   @override
   State<_BlogCardDesktop> createState() => _BlogCardDesktopState();
@@ -20,6 +23,9 @@ class _BlogCardDesktopState extends State<_BlogCardDesktop> {
   Widget build(BuildContext context) {
     final String dateStr = _formatDate(widget.post.createdAt, widget.isRtl); // BUG-145
 
+    // BUG-183 — Figma: white card radius 15; title Cairo SemiBold 20
+    // primary; LARGE image (161×167, radius 8) on the right; date 12 px grey;
+    // "Read More" 81×34.
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit:  (_) => setState(() => _hovered = false),
@@ -27,86 +33,84 @@ class _BlogCardDesktopState extends State<_BlogCardDesktop> {
         duration:   const Duration(milliseconds: 200),
         decoration: BoxDecoration(
             color:        _kSurface,
-            borderRadius: BorderRadius.circular(12.r)),
+            borderRadius: BorderRadius.circular(15.r)),
         child: Padding(
-          padding: EdgeInsets.symmetric(
-              horizontal: 16.w, vertical: 16.h),
-          // BUG-139: max + spaceBetween → the footer row is pinned to the
-          // bottom when the row gives the card a fixed height (shrink-wraps
-          // otherwise).
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize:       MainAxisSize.max,
-            mainAxisAlignment:  MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize:       MainAxisSize.max,
-                      mainAxisAlignment:  MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(_tb(widget.post.question, widget.isRtl),
-                            style: StyleText.fontSize12Weight500
-                                .copyWith(
-                                fontSize:   15.sp,
-                                fontWeight: FontWeight.w600)),
-                        SizedBox(height: 10.h),
-                        Builder(builder: (_) {
-                          final shortDesc =
-                              _tb(widget.post.shortDescription, widget.isRtl);
-                          if (shortDesc.trim().isEmpty) {
-                            return Text('• • • • • • • • • • •',
-                                style: StyleText.fontSize14Weight400.copyWith(
-                                    color:         _kDivider,
-                                    fontSize:      9.sp,
-                                    letterSpacing: 2));
-                          }
-                          return Text(
-                            shortDesc,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign:
-                                widget.isRtl ? TextAlign.right : TextAlign.left,
-                            style: AppTextStyles.font14BlackCairoRegular.copyWith(
-                                color:    AppColors.secondaryBlack,
-                                fontSize: 12.sp),
-                          );
-                        }),
-                        SizedBox(height: 10.h),
-                      ],
-                    ),
+          // Figma: card 450×250, padding 20, image 161×167 (radius 12) at
+          // the end, 28 px between the text column and the image.
+          padding: EdgeInsets.all(20.w),
+          child: Builder(builder: (context) {
+            final double inner = (widget.width ?? 450.w) - 40.w;
+            final double imgW = math.min(161.w, inner * 0.4);
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize:       MainAxisSize.max,
+                    mainAxisAlignment:  MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(_tb(widget.post.question, widget.isRtl),
+                              style: StyleText.fontSize12Weight500.copyWith(
+                                  fontSize:   20.sp, // Figma SemiBold 20/150 %
+                                  height:     1.5,
+                                  color:      widget.primaryColor,
+                                  fontWeight: FontWeight.w600)),
+                          SizedBox(height: 10.w),
+                          Builder(builder: (_) {
+                            final shortDesc =
+                                _tb(widget.post.shortDescription, widget.isRtl);
+                            if (shortDesc.trim().isEmpty) return const SizedBox.shrink();
+                            return Text(
+                              shortDesc,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign:
+                                  widget.isRtl ? TextAlign.right : TextAlign.left,
+                              // BUG-245: same description token as the service cards.
+                              style: AppTextStyles.font14BlackCairoRegular.copyWith(
+                                  color:      SiteColors.description,
+                                  fontWeight: FontWeight.w500, // Figma Medium 16/150 %
+                                  height:     1.5,
+                                  fontSize:   16.sp),
+                            );
+                          }),
+                        ],
+                      ),
+                      SizedBox(height: 10.w),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(dateStr,
+                                // Figma: SemiBold 12/150 % (grey, AA contrast).
+                                style: AppTextStyles.font14BlackCairoRegular.copyWith(
+                                    color:      SiteColors.meta,
+                                    fontWeight: FontWeight.w600,
+                                    height:     1.5,
+                                    fontSize:   12.sp)),
+                          ),
+                          _ReadMoreBtnDesktop(
+                              isRtl:        widget.isRtl,
+                              primaryColor: widget.primaryColor,
+                              postId: widget.post.id),
+                        ],
+                      ),
+                    ],
                   ),
-                  SizedBox(width: 12.w),
-                  _svgBlogImage(
-                      url:          widget.post.imageUrl,
-                      width:        80.w,
-                      height:       96.h,
-                      radius:       10.r,
-                      primaryColor: widget.primaryColor),
-                ],
-              ),
-              Padding(
-                padding: EdgeInsets.only(top: 14.h),
-                child: Row(
-                children: [
-                  Text(dateStr,
-                      style: AppTextStyles.font14BlackCairoRegular
-                          .copyWith(
-                          color:    AppColors.secondaryBlack,
-                          fontSize: 12.sp)),
-                  const Spacer(),
-                  _ReadMoreBtnDesktop(
-                      isRtl:        widget.isRtl,
-                      primaryColor: widget.primaryColor,
-                      postId: widget.post.id),
-                ],
-              ),
-              ),
-            ],
-          ),
+                ),
+                SizedBox(width: 28.w),
+                _svgBlogImage(
+                    url:          widget.post.imageUrl,
+                    width:        imgW,
+                    height:       imgW * 167 / 161,
+                    radius:       12.w,
+                    primaryColor: widget.primaryColor),
+              ],
+            );
+          }),
         ),
       ),
     );

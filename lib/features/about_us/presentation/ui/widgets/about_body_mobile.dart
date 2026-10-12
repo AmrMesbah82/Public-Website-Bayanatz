@@ -74,8 +74,10 @@ class _AboutBodyMobileState extends State<_AboutBodyMobile> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(height: 8.h),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
+          // BUG-246: the tabs WRAP (all 4 always reachable — the row used to
+          // run off the screen with no hint, in Arabic especially).
+          SizedBox(
+            width: double.infinity,
             child: BlocBuilder<StrategyCubit, StrategyState>(
               builder: (context, strategyState) {
                 // CMS navigation-label icons (set in the admin app)
@@ -84,7 +86,11 @@ class _AboutBodyMobileState extends State<_AboutBodyMobile> {
                   StrategySaved(:final data) => data.navigationLabel.iconUrl,
                   _ => '',
                 };
-                return Row(
+                // QA-Oct11 #41: all tabs on ONE row that scrolls sideways.
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: List.generate(_topTabs.length, (i) {
                     final String cmsIconUrl = switch (i) {
                       0 => widget.model.navigationLabel.iconUrl,
@@ -101,7 +107,10 @@ class _AboutBodyMobileState extends State<_AboutBodyMobile> {
                       3 => widget.isRtl ? privacy.title.ar : privacy.title.en,
                       _ => '',
                     };
-                    return _MobileTopTabItem(
+                    return Padding(
+                      padding: EdgeInsetsDirectional.only(
+                          end: i == _topTabs.length - 1 ? 0 : 8),
+                      child: _MobileTopTabItem(
                       index: i,
                       label: cmsLabel.isNotEmpty
                           ? cmsLabel
@@ -116,8 +125,10 @@ class _AboutBodyMobileState extends State<_AboutBodyMobile> {
                       primaryColor: widget.primaryColor,
                       secondaryColor: widget.secondaryColor,
                       onTap: () => setState(() => _selectedTopTab = i),
+                    ),
                     );
                   }),
+                  ),
                 );
               },
             ),

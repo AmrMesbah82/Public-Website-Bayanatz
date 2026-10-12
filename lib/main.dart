@@ -1,7 +1,4 @@
-import 'dart:io';
-
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -13,6 +10,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:website_app/features/about_us/presentation/controller/about_us_company_cubit.dart';
 import 'package:website_app/features/about_us/data/repository/about_company_repository_impl.dart';
 
+import 'core/responsive/site_layout.dart';
+import 'core/utils/page_meta.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 
@@ -47,79 +46,29 @@ Future<void> main() async {
   // Refresh / Share / Back always match the page that is shown.
   GoRouter.optionURLReflectsImperativeAPIs = true;
   AppTheme.setCurrentThemeColors();
+  // BUG-253: page title follows the current route.
+  AppRouter.router.routerDelegate.addListener(() {
+    PageMeta.onLocation(
+        AppRouter.router.routerDelegate.currentConfiguration.uri.path);
+  });
   runApp(const BayanatzApp());
 }
 
-Size _getDesignSize({
-  required double screenWidth,
-  required double screenHeight,
-}) {
-  final isLandscape = screenWidth > screenHeight;
-
-  // ignore: avoid_print
-
-  // ==================== DESKTOP PLATFORMS ====================
-  if (!kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux)) {
-    // ignore: avoid_print
-
-
-    if (screenWidth >= 1920) {
-      const size = Size(1920, 1080);
-      // ignore: avoid_print
-      return size;
-    }
-    if (screenWidth >= 1366) {
-      const size = Size(1366, 768);
-      // ignore: avoid_print
-      return size;
-    }
-    if (screenWidth >= 768) {
-      final size = isLandscape ? const Size(1024, 768) : const Size(768, 1024);
-      // ignore: avoid_print
-      return size;
-    }
-    const size = Size(375, 812);
-    // ignore: avoid_print
-    return size;
-  }
-
-  // ==================== LARGE DESKTOP / TV (≥ 1920) ====================
-  if (screenWidth >= 1920) {
-    const size = Size(1920, 1080);
-    // ignore: avoid_print
-    return size;
-  }
-
-  // ==================== LAPTOP (1366 – 1919) ====================
-  if (screenWidth >= 1366) {
-    const size = Size(1366, 768);
-    // ignore: avoid_print
-    return size;
-  }
-
-  // ==================== TABLET (768 – 1365) ====================
-  if (screenWidth >= 768) {
-    final size = isLandscape ? const Size(1024, 768) : const Size(768, 1024);
-    // ignore: avoid_print
-    return size;
-  }
-
-  // ==================== MOBILE (< 768) ====================
-  final size = isLandscape ? const Size(812, 375) : const Size(375, 812);
-  // ignore: avoid_print
-  return size;
-}
+// BUG-161 / BUG-162 / BUG-191: the design size used to be picked ONCE from
+// the first window size (View.physicalSize is not a rebuild dependency), so a
+// live resize scaled the page instead of re-arranging it, and 541–767 px used
+// the 375-px phone design for the desktop layout (enlarged page). The size is
+// now derived from MediaQuery on every resize — see SiteLayout.
 
 class BayanatzApp extends StatelessWidget {
   const BayanatzApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final screen = View.of(context).physicalSize / View.of(context).devicePixelRatio;
-    final designSize = _getDesignSize(
-      screenWidth: screen.width,
-      screenHeight: screen.height,
-    );
+    // MediaQuery.sizeOf registers a dependency, so this rebuilds on every
+    // window resize and ScreenUtil gets the new design size right away.
+    final Size screen = MediaQuery.sizeOf(context);
+    final Size designSize = SiteLayout.designSizeFor(screen);
 
     return ScreenUtilInit(
       designSize: designSize,
@@ -127,8 +76,12 @@ class BayanatzApp extends StatelessWidget {
       splitScreenMode: true,
       ensureScreenSize: true,
       useInheritedMediaQuery: true,
+      // Text follows the width scale but never drops below 13 px.
+      fontSizeResolver: SiteLayout.resolveFontSize,
       builder: (ctx, _) {
-        return MultiBlocProvider(
+        return RebuildOnResize(
+          token: screen,
+          child: MultiBlocProvider(
           providers: [
             // ← Add LanguageCubit FIRST so it's available to all widgets
             BlocProvider<LanguageCubit>(
@@ -210,8 +163,13 @@ class BayanatzApp extends StatelessWidget {
           ],
           child: BlocBuilder<LanguageCubit, LanguageState>(
             builder: (context, langState) {
-              return MaterialApp.router(
-                title: 'Bayanatz',
+              // BUG-253: <html lang/dir> follows the site language.
+              PageMeta.setLanguage(langState.isArabic);
+              return ValueListenableBuilder<String>(
+                valueListenable: PageMeta.title,
+                builder: (context, pageTitle, _) => MaterialApp.router(
+                // BUG-253: one browser-tab title per page.
+                title: pageTitle,
                 debugShowCheckedModeBanner: false,
                 theme: AppTheme.lightTheme,
                 darkTheme: AppTheme.darkTheme,
@@ -227,9 +185,11 @@ class BayanatzApp extends StatelessWidget {
                   GlobalWidgetsLocalizations.delegate,
                   GlobalCupertinoLocalizations.delegate,
                 ],
+              ),
               );
             },
           ),
+        ),
         );
       },
     );

@@ -70,7 +70,6 @@ class _TabletTabItemState extends State<_TabletTabItem> {
                 child: Text(
                   widget.label,
                   style: StyleText.fontSize12Weight600.copyWith(
-                    fontFamily: 'Cairo',
                     fontSize: 12.sp,
                     fontWeight: FontWeight.w600,
                     color: widget.isSelected

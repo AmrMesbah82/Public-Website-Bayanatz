@@ -13,6 +13,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../custom/1-custom_dropdwon.dart' as custom;
 import '../theme/appcolors.dart';
 import '../theme/new_theme.dart';
+import '../theme/site_tokens.dart';
 
 class CustomDropdownFormFieldInvMaster extends StatelessWidget {
   final String? selectedValue;
@@ -38,6 +39,10 @@ class CustomDropdownFormFieldInvMaster extends StatelessWidget {
   /// the text fields (was a separate, smaller Text with a grey border).
   final String? errorText;
 
+  /// BUG-225: red border without a message (e.g. the phone-code picker when
+  /// the number next to it is invalid).
+  final bool showErrorBorder;
+
   const CustomDropdownFormFieldInvMaster({
     Key? key,
     required this.selectedValue,
@@ -59,6 +64,7 @@ class CustomDropdownFormFieldInvMaster extends StatelessWidget {
     this.showColorDots = false,
     this.borderRadius = 8.0,
     this.errorText,
+    this.showErrorBorder = false,
   }) : super(key: key);
 
   Color? _getItemColor(Map<String, String> item) {
@@ -76,7 +82,7 @@ class CustomDropdownFormFieldInvMaster extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double fieldHeight = height ?? 36;
+    final double fieldHeight = height ?? 42; // BUG-165: one field height
 
     final dropdownItems = items.map((item) {
       final Color? itemColor = _getItemColor(item);
@@ -107,19 +113,18 @@ class CustomDropdownFormFieldInvMaster extends StatelessWidget {
           StyleText.fontSize14Weight400.copyWith(color: AppColors.text),
       fillColor: dropdownColor ?? const Color(0xFFF1F2ED),
       borderRadius: BorderRadius.circular(borderRadius.r),
-      triggerPadding: EdgeInsets.symmetric(
-        horizontal: 8.w,
-        vertical: ((fieldHeight - 20) / 2).h,
-      ),
+      triggerPadding: EdgeInsets.symmetric(horizontal: 12.w),
       itemHeight: fieldHeight.h,
       // BUG-132: same box height as the text fields next to it.
       fieldHeight: fieldHeight.h,
       errorText: errorText,
+      showErrorBorder: showErrorBorder,
       maxOverlayHeight: 225.h,
-      valueStyle:
-          StyleText.fontSize12Weight400.copyWith(color: AppColors.text),
-      hintStyle: StyleText.fontSize12Weight400
-          .copyWith(color: AppColors.text.withValues(alpha: 0.4)),
+      valueStyle: StyleText.fontSize14Weight400
+          .copyWith(color: AppColors.text, fontSize: 14.sp),
+      // BUG-129 / BUG-136: readable placeholder grey.
+      hintStyle: StyleText.fontSize14Weight400
+          .copyWith(color: SiteColors.placeholder, fontSize: 14.sp),
     );
 
     if (width == null) return dropdown;

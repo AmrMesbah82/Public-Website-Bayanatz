@@ -18,6 +18,7 @@
 
 // ignore_for_file: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -34,6 +35,9 @@ import '../../../../../core/widgets/scroll_with_footer.dart';
 import '../../../../../core/main_widgets/app_navbar.dart';
 import '../../../../../core/theme/appcolors.dart';
 import '../../../../../core/theme/new_theme.dart';
+import '../../../../../core/theme/site_tokens.dart';
+import '../../../../../core/responsive/site_layout.dart';
+import '../../../../../core/widgets/tinted_network_icon.dart';
 import '../../../../careers/data/models/careers_section_model.dart';
 import '../../../../home/presentation/controller/home_cubit.dart';
 import '../../../../home/presentation/controller/home_state.dart';
@@ -67,6 +71,13 @@ part '../widgets/mobile_doc_panel.dart';
 part '../widgets/mobile_tab_data.dart';
 part '../widgets/mobile_accordion_item.dart';
 part '../widgets/values_grid_mobile.dart';
+
+// Imports used only from part files — referenced here so an IDE
+// "Optimize Imports" cannot drop them (BUG-184 / BUG-227 / BUG-246).
+typedef _KeepTintedIcon = TintedNetworkIcon;
+typedef _KeepSiteLayout = SiteLayout;
+const Color _kKeepTokens = SiteColors.primary;
+const Utf8Codec _kKeepUtf8 = utf8;
 
 // BUG-65: used from a part file — referenced here so an IDE
 // "Optimize Imports" can't drop the import.

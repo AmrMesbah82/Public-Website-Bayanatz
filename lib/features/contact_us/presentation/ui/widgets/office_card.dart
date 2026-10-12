@@ -20,41 +20,42 @@ class _OfficeCard extends StatelessWidget {
 
     final bool hasLink = office.mapLink.isNotEmpty;
 
-    return GestureDetector(
+    // Figma country card: #F1F2ED, radius 20, 417×267, padding 25; 140 px
+    // icon; name Cairo Bold 24/150 % primary; detail SemiBold 18/150 % grey
+    // (20 px between the two lines).
+    return InkWell(
       onTap: hasLink ? () => _launchMapLink(office.mapLink) : null,
-      child: MouseRegion(
-        cursor:
-        hasLink ? SystemMouseCursors.click : MouseCursor.defer,
-        child: Container(
+      borderRadius: BorderRadius.circular(20.r),
+      child: Container(
           width:  double.infinity,
-          padding: EdgeInsets.symmetric(
-              vertical: 12.h),
+          constraints: BoxConstraints(minHeight: 267.w),
+          padding: EdgeInsets.all(25.w),
           decoration: BoxDecoration(
               color:        const Color(0xFFF1F2ED),
-              borderRadius: BorderRadius.circular(14.r)),
+              borderRadius: BorderRadius.circular(20.r)),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (office.iconUrl.isNotEmpty)
                 _officeIcon(
-                    office.iconUrl, 80.w, 80.h, primaryColor)
+                    office.iconUrl, 140.w, 140.w, primaryColor)
               else
                 Icon(Icons.location_on,
-                    size: 80.w, color: primaryColor),
-              SizedBox(height: 12.h),
+                    size: 140.w, color: primaryColor),
+              SizedBox(height: 0),
               Text(name,
                   textAlign: TextAlign.center,
                   style: StyleText.fontSize16Weight700.copyWith(
-                      color: primaryColor, fontSize: 13.sp)),
-              SizedBox(height: 4.h),
+                      color: primaryColor, fontSize: 24.sp, height: 1.5)),
+              SizedBox(height: 20.w),
               Text(text,
                   textAlign: TextAlign.center,
                   style: StyleText.fontSize13Weight400.copyWith(
-                      color: const Color(0xFF797979) /* Figma grey */, fontSize: 12.sp)),
+                      color: SiteColors.description, fontSize: 18.sp,
+                      height: 1.5, fontWeight: FontWeight.w600)),
             ],
           ),
         ),
-      ),
     );
   }
 }

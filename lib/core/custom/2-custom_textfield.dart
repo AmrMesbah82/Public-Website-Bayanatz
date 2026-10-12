@@ -19,6 +19,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../theme/appcolors.dart';
 import '../theme/new_theme.dart';
+import '../theme/site_tokens.dart';
 
 /// Custom text field widget — mirrors CustomDropdown API exactly.
 ///
@@ -42,6 +43,9 @@ class CustomTextField extends StatefulWidget {
 
   /// Label displayed above the field.
   final String? label;
+
+  /// Accessible name when the label is drawn outside this widget (BUG-257).
+  final String? semanticsLabel;
 
   /// Error message — also triggers the red border.
   final String? errorText;
@@ -180,6 +184,7 @@ class CustomTextField extends StatefulWidget {
     this.initialValue,
     this.hint,
     this.label,
+    this.semanticsLabel,
     this.errorText,
     this.helperText,
     this.prefixIcon,
@@ -332,6 +337,45 @@ class _CustomTextFieldState extends State<CustomTextField> {
     super.dispose();
   }
 
+  /// One-line field: the surrounding Container paints the box, so the
+  /// InputDecoration itself is transparent, borderless and unpadded.
+  InputDecoration _boxed(InputDecoration d) => _fillsHeight
+      ? d.copyWith(
+          // QA-Oct11: the value sat ~5 px LOWER than the dropdown text next
+          // to it — the InputDecorator added its own offset (dense layout +
+          // an empty counter row). Collapsed = the input is only the text
+          // line, centred by the Container exactly like a dropdown's Text.
+          isCollapsed: true,
+          filled: false,
+          contentPadding: EdgeInsets.zero,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          disabledBorder: InputBorder.none,
+          errorBorder: InputBorder.none,
+          focusedErrorBorder: InputBorder.none,
+        )
+      : d;
+
+  /// One-line field: value + hint vertically centred in the 36.sp box.
+  ///
+  /// QA-Oct11: SiteField.centred (1.4 line box) works for a plain Text (the
+  /// dropdowns) but NOT inside a TextField on web — measured in the running
+  /// page: the line box was centred, yet the glyphs were drawn from its top
+  /// with Cairo's FULL ascent, so value + hint sat ~4 px low. Cairo's natural
+  /// line box (ascent 1.303 + descent 0.571 = 1.874 em) has zero leading, so
+  /// both renderers draw it the same way and the text lands on the middle.
+  TextStyle _centred(TextStyle s) => _fillsHeight
+      ? s.copyWith(
+          height: 1.874,
+          leadingDistribution: TextLeadingDistribution.even,
+        )
+      : s;
+
+  /// One-line field with a fixed height → fills that height (see TextField).
+  bool get _fillsHeight =>
+      widget.height != null && !_isMultiline && !widget.obscureText;
+
   bool get _isMultiline =>
       (widget.maxLines ?? 1) != 1 || widget.minLines != null;
 
@@ -430,8 +474,12 @@ class _CustomTextFieldState extends State<CustomTextField> {
     }
 
     // ── Content padding ────────────────────────────────────────────────────
-    final effectivePadding = widget.contentPadding ??
-        EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h);
+    // Every field: 10.sp inner padding (SiteField).
+    final effectivePadding =
+        widget.contentPadding ?? EdgeInsets.symmetric(horizontal: 12.sp , vertical: 1.sp);
+    final Color fieldFill = isDisabled
+        ? (widget.fillColor ?? AppColors.card).withOpacity(0.5)
+        : widget.fillColor ?? AppColors.card;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -439,36 +487,37 @@ class _CustomTextFieldState extends State<CustomTextField> {
       children: [
         // ── Label ──────────────────────────────────────────────────────────
         if (widget.label != null) ...[
-          RichText(
-            text: TextSpan(
-              text: widget.label,
-              // BUG-130: labels keep their normal colour on error (the red
-              // border + message mark the field) — same as the Contact form.
-              style: widget.labelStyle ??
-                  StyleText.fontSize14Weight500.copyWith(
-                    color: isDisabled
-                        ? AppColors.text.withOpacity(0.4)
-                        : AppColors.text,
-                  ),
-              // BUG-128: required fields are marked with a red " *".
-              children: widget.required
-                  ? [
-                TextSpan(
-                  text: '*',
-                  style: StyleText.fontSize14Weight500
-                      .copyWith(color: AppColors.red),
-                ),
-              ]
-                  : [],
-            ),
+          // BUG-233 / BUG-236 / BUG-186: ONE label widget for every field
+          // (text, phone, link, upload): 16 SemiBold #2D2D2D + red " *".
+          requiredLabel(
+            widget.label!,
+            required: widget.required,
+            style: widget.labelStyle,
           ),
-          SizedBox(height: 6.h),
+          const SizedBox(height: 8),
         ],
 
         // ── Field ──────────────────────────────────────────────────────────
-        SizedBox(
+        // A one-line field is ONE 36.sp box (SiteField.height) painted by
+        // this Container — fill, radius and the red error border — with the
+        // text vertically centred and 10.sp padding. (The InputDecoration
+        // `constraints` approach painted only the text line on web.)
+        Container(
           width: widget.width?.w,
-          height: widget.height?.h,
+          height: _fillsHeight ? SiteField.height : widget.height?.h,
+          padding: _fillsHeight
+              ? EdgeInsets.symmetric(horizontal: SiteField.padding)
+              : null,
+          alignment: _fillsHeight ? AlignmentDirectional.centerStart : null,
+          decoration: _fillsHeight
+              ? BoxDecoration(
+                  color: fieldFill,
+                  borderRadius: radius,
+                  border: hasError
+                      ? Border.all(color: SiteColors.error, width: 1.5)
+                      : null,
+                )
+              : null,
           child: Theme(
             // ── Cursor / selection color rule ───────────────────────────────
             // Flutter derives the blinking cursor color, the text-selection
@@ -483,37 +532,55 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 selectionHandleColor: brandPrimary,
               ),
             ),
-            child: TextField(
+            // BUG-257: the input is announced by its label, not "Text Here".
+            child: Semantics(
+              label: widget.semanticsLabel ?? widget.label,
+              child: TextField(
 
               controller: _controller,
               focusNode: _focusNode,
               enabled: widget.enabled,
               readOnly: widget.readOnly,
               obscureText: _effectiveObscure,
-              maxLines: widget.obscureText ? 1 : widget.maxLines,
-              minLines: widget.minLines,
-              maxLength: _effectiveMaxLength,
+              // BUG-223: a one-line field is a real single-line <input>
+              // (maxLines: 1). `expands` + maxLines:null turned every Name /
+              // Email / Phone field into a <textarea> (Safari scroll thumb,
+              // Enter swallowed the following characters). The full height
+              // now comes from InputDecoration.constraints instead (BUG-165).
+              maxLines: _fillsHeight ? 1 : (widget.obscureText ? 1 : widget.maxLines),
+              minLines: _fillsHeight ? null : widget.minLines,
+              expands: false,
+              maxLength: _fillsHeight ? null : _effectiveMaxLength,
               cursorColor: brandPrimary,
               keyboardType: _isMultiline
                   ? TextInputType.multiline
                   : (widget.keyboardType ??
                   (widget.onlyDigits ? TextInputType.number : null)),
-              inputFormatters: _resolvedFormatters,
+              inputFormatters: _fillsHeight
+                  ? [
+                      ...?_resolvedFormatters,
+                      FilteringTextInputFormatter.deny(RegExp(r'[\n\r]')),
+                      if (_effectiveMaxLength != null)
+                        LengthLimitingTextInputFormatter(_effectiveMaxLength),
+                    ]
+                  : _resolvedFormatters,
               textAlign: widget.textAlign,
               textDirection: widget.textDirection,
-              textInputAction: widget.textInputAction,
+              // BUG-223: Enter in a one-line field moves to the next field.
+              textInputAction: widget.textInputAction ??
+                  (_isMultiline ? null : TextInputAction.next),
               textCapitalization: widget.textCapitalization,
               autocorrect: widget.autocorrect,
               enableSuggestions: widget.enableSuggestions,
               onChanged: widget.onChanged,
               onSubmitted: widget.onSubmitted,
               onTap: widget.onTap,
-              style: widget.valueStyle ??
+              style: _centred(widget.valueStyle ??
                   StyleText.fontSize14Weight400.copyWith(
                     color: isDisabled
                         ? AppColors.text.withOpacity(0.4)
                         : AppColors.text,
-                  ),
+                  )),
               // NEVER show the built-in counter (app-wide rule)
               buildCounter: _effectiveMaxLength != null
                   ? (_,
@@ -522,15 +589,27 @@ class _CustomTextFieldState extends State<CustomTextField> {
                     maxLength}) =>
               const SizedBox.shrink()
                   : null,
-              decoration: InputDecoration(
+              // A one-line field with a fixed height fills that WHOLE height
+              // (text centred), exactly like the dropdowns next to it — before,
+              // only the text line was painted and the box looked shorter.
+              textAlignVertical:
+                  _fillsHeight ? TextAlignVertical.center : null,
+              // QA-Oct11: value + hint share ONE fixed line box (the same as
+              // the dropdown Text), so both sit on the box's middle.
+              strutStyle: _fillsHeight
+                  ? StrutStyle.fromTextStyle(
+                      _centred(widget.valueStyle ??
+                          StyleText.fontSize14Weight400),
+                      forceStrutHeight: true,
+                    )
+                  : null,
+              decoration: _boxed(InputDecoration(
                 isDense: true,
-                contentPadding: effectivePadding,
+                contentPadding: EdgeInsets.symmetric(horizontal: 12.sp , vertical: 20.sp),
                 filled: true,
                 // No hover overlay tint on desktop/web
                 hoverColor: Colors.transparent,
-                fillColor: isDisabled
-                    ? (widget.fillColor ?? AppColors.card).withOpacity(0.5)
-                    : widget.fillColor ?? AppColors.card,
+                fillColor: fieldFill,
 
                 // ── No border rule ────────────────────────────────────────────
                 // Default / focused / disabled → no border at all.
@@ -538,8 +617,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 border: hasError
                     ? OutlineInputBorder(
                   borderRadius: radius,
-                  borderSide:
-                  BorderSide(color: AppColors.red, width: 1.5.w),
+                  borderSide: const BorderSide(color: SiteColors.error, width: 1.5),
                 )
                     : OutlineInputBorder(
                   borderRadius: radius,
@@ -548,8 +626,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 enabledBorder: hasError
                     ? OutlineInputBorder(
                   borderRadius: radius,
-                  borderSide:
-                  BorderSide(color: AppColors.red, width: 1.5.w),
+                  borderSide: const BorderSide(color: SiteColors.error, width: 1.5),
                 )
                     : OutlineInputBorder(
                   borderRadius: radius,
@@ -558,8 +635,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 focusedBorder: hasError
                     ? OutlineInputBorder(
                   borderRadius: radius,
-                  borderSide:
-                  BorderSide(color: AppColors.red, width: 1.5.w),
+                  borderSide: const BorderSide(color: SiteColors.error, width: 1.5),
                 )
                     : OutlineInputBorder(
                   borderRadius: radius,
@@ -571,23 +647,25 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 ),
                 errorBorder: OutlineInputBorder(
                   borderRadius: radius,
-                  borderSide: BorderSide(color: AppColors.red, width: 1.5.w),
+                  borderSide: const BorderSide(color: SiteColors.error, width: 1.5),
                 ),
                 focusedErrorBorder: OutlineInputBorder(
                   borderRadius: radius,
-                  borderSide: BorderSide(color: AppColors.red, width: 1.5.w),
+                  borderSide: const BorderSide(color: SiteColors.error, width: 1.5),
                 ),
                 // ─────────────────────────────────────────────────────────────
 
                 hintText: widget.hint,
-                hintStyle: widget.hintStyle ??
-                    StyleText.fontSize14Weight400.copyWith(
-                      color: AppColors.text.withOpacity(0.4),
-                    ),
+                // BUG-129 / BUG-136: readable placeholder (≥ 4.5:1).
+                hintStyle: _centred(widget.hintStyle ??
+                    StyleText.fontSize18Weight500.copyWith(
+                      color: SiteColors.placeholder,
+                    )),
 
                 prefixIcon: widget.prefixIcon != null
                     ? Padding(
-                  padding: EdgeInsets.only(left: 12.w, right: 8.w),
+                  padding: EdgeInsetsDirectional.only(
+                      start: _fillsHeight ? 0 : SiteField.padding, end: 8.w),
                   child: widget.prefixIcon,
                 )
                     : null,
@@ -595,7 +673,8 @@ class _CustomTextFieldState extends State<CustomTextField> {
 
                 suffixIcon: resolvedSuffix != null
                     ? Padding(
-                  padding: EdgeInsets.only(left: 8.w, right: 12.w),
+                  padding: EdgeInsetsDirectional.only(
+                      start: 8.w, end: _fillsHeight ? 0 : SiteField.padding),
                   child: resolvedSuffix,
                 )
                     : null,
@@ -605,14 +684,16 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 errorText: null,
                 helperText: null,
                 counterText: '',
-              ),
+              )),
+            ),
             ),
           ),
         ),
 
         // ── Error / Helper row (NO counter — app-wide rule) ────────────────
         if (hasError || widget.helperText != null) ...[
-          SizedBox(height: 4.h),
+          // BUG-131: the same gap under every field and dropdown.
+          const SizedBox(height: SiteText.errorGap),
           hasError
               ? Text(
             resolvedError!,
@@ -626,29 +707,34 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 ),
           ),
           // BUG-131: breathing room before the next label (was ≈2 px).
-          if (hasError) SizedBox(height: 6.h),
+          if (hasError) const SizedBox(height: 4),
         ],
       ],
     );
   }
 }
 
-/// BUG-131: ONE error style for text fields AND dropdowns.
-TextStyle customFieldErrorStyle() =>
-    StyleText.fontSize12Weight400.copyWith(color: AppColors.red);
+/// BUG-131: ONE error style for text fields, dropdowns, the phone picker
+/// and the upload boxes — 13 px, one red (#D32F2F).
+TextStyle customFieldErrorStyle() => SiteText.error();
 
 /// BUG-128: label with a red " *" for required fields — used by fields that
 /// draw their own label (phone, dropdowns, legacy shim).
 Widget requiredLabel(String label,
     {bool required = false, TextStyle? style, TextDirection? textDirection}) {
-  final base =
-      style ?? StyleText.fontSize14Weight400.copyWith(color: AppColors.text);
+  // BUG-186: Figma form labels are 16 px SemiBold #2D2D2D.
+  final base = style ??
+      StyleText.fontSize14Weight400.copyWith(
+        fontSize:   16.sp, // Figma form labels: Cairo SemiBold 16 #2D2D2D
+        fontWeight: FontWeight.w600,
+        color:      SiteColors.textStrong,
+      );
   return Text.rich(
     TextSpan(
       text: label,
       style: base,
       children: required
-          ? [TextSpan(text: '*', style: base.copyWith(color: AppColors.red))]
+          ? [TextSpan(text: ' *', style: base.copyWith(color: SiteColors.error))]
           : const [],
     ),
     textDirection: textDirection,

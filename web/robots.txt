@@ -1,0 +1,7 @@
+# BUG-254
+User-agent: *
+Allow: /
+Disallow: /jobs/*/apply
+Disallow: /jobs/*/applied
+
+Sitemap: https://web-app-admin-33b9a.web.app/sitemap.xml

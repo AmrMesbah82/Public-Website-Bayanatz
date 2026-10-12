@@ -14,27 +14,27 @@ class _MobileInternCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(14.w),
+      // Figma (iPhone intern card): radius 15, padding 15; 65 px photo;
+      // name SemiBold 18/28, degree SemiBold 12/28 grey, chip SemiBold 16
+      // white (radius 8); right: title SemiBold 14 black, text 12/22 grey.
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(15),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 80.w,
+            width: 140,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // ── Photo: network if available, asset fallback ────────────
                 Container(
-                  width: 56.w,
-                  height: 56.w,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: primary, width: 1.5),
-                  ),
+                  width: 65,
+                  height: 65,
+                  decoration: const BoxDecoration(shape: BoxShape.circle),
                   child: ClipOval(
                     child: data.photoUrl.isNotEmpty
                         ? Image.network(
@@ -56,9 +56,10 @@ class _MobileInternCard extends StatelessWidget {
                   data.fullNameFor(isRtl), // BUG-74
                   textAlign: TextAlign.center,
                   style: StyleText.fontSize12Weight500.copyWith(
-                    fontSize: 10.sp,
+                    fontSize: 18,
+                    height: 28 / 18,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                    color: SiteColors.description,
                   ),
                 ),
                 SizedBox(height: 3.h),
@@ -66,26 +67,28 @@ class _MobileInternCard extends StatelessWidget {
                   data.degreesFor(isRtl),
                   textAlign: TextAlign.center,
                   style: StyleText.fontSize10Weight400.copyWith(
-                    fontSize: 9.sp,
-                    color: const Color(0xFF797979) /* Figma grey */,
-                    height: 1.3,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF666666) /* Figma grey */,
+                    height: 28 / 12,
                   ),
                 ),
                 // ── Position ───────────────────────────────────────────
                 if (data.positionFor(isRtl).isNotEmpty) ...[
                   SizedBox(height: 5.h),
                   Container(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: 8.w, vertical: 3.h),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 15, vertical: 5.5),
                     decoration: BoxDecoration(
                       color: primary,
-                      borderRadius: BorderRadius.circular(5.r),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       data.positionFor(isRtl),
                       textAlign: TextAlign.center,
                       style: StyleText.fontSize10Weight400.copyWith(
-                        fontSize: 10.sp,
+                        fontSize: 16,
+                        height: 1.5,
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
                       ),
@@ -120,7 +123,7 @@ class _MobileInternCard extends StatelessWidget {
               ],
             ),
           ),
-          SizedBox(width: 10.w),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,16 +135,16 @@ class _MobileInternCard extends StatelessWidget {
                     Text(
                       _t('Joined as intern: ', 'انضم كمتدرب: ', isRtl),
                       style: StyleText.fontSize11Weight400.copyWith(
-                        fontSize: 10.sp,
-                        color: AppColors.secondaryText,
+                        fontSize: 12,
+                        color: SiteColors.description,
                       ),
                     ),
 
                     Text(
                       data.joinDateLabelFor(isRtl),
                       style: StyleText.fontSize11Weight400.copyWith(
-                        fontSize: 10.sp,
-                        color: AppColors.text,
+                        fontSize: 12,
+                        color: SiteColors.description,
                       ),
                     ),
                   ],
@@ -150,18 +153,19 @@ class _MobileInternCard extends StatelessWidget {
                 Text(
                   _t('What Have I Learned', 'ماذا تعلمت', isRtl),
                   style: StyleText.fontSize13Weight600.copyWith(
-                    fontSize: 11.sp,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black87,
+                    fontSize: 14,
+                    height: 2.0,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
                   ),
                 ),
                 SizedBox(height: 6.h),
                 Text(
                   data.whatHaveILearnedFor(isRtl),
                   style: StyleText.fontSize12Weight600.copyWith(
-                    fontSize: 10.sp,
-                    height: 1.6,
-                    color: Colors.black54,
+                    fontSize: 12,
+                    height: 22 / 12,
+                    color: SiteColors.description,
                   ),
                 ),
               ],

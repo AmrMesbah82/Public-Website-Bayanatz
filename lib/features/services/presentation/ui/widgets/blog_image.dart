@@ -25,22 +25,14 @@ class _BlogImage extends StatelessWidget {
         width:  width,
         height: height,
         child: url.isNotEmpty
-            ? SvgPicture.network(
+            // BUG-251: SmartNetworkImage also draws raster-in-SVG uploads
+            // (blank in Safari with SvgPicture). BUG-190: cover the box.
+            ? SmartNetworkImage(
           url,
-          // width:  width,
-          // height: height,
-          fit:    BoxFit.contain,
-          placeholderBuilder: (_) => Container(
-            width:  width,
-            height: height,
-            color:  fallbackColor,
-            child: Center(
-              child: CircularProgressIndicator(
-                strokeWidth: 1.5,
-                color:       primaryColor,
-              ),
-            ),
-          ),
+          width:  width,
+          height: height,
+          fit:    BoxFit.cover,
+          fallback: Container(color: fallbackColor),
         )
             : Container(
           color: fallbackColor,

@@ -29,45 +29,46 @@ class _SuccessDialog extends StatelessWidget {
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(
             borderRadius:
-            BorderRadius.circular(isMobile ? 14 : 16.r)),
+            BorderRadius.circular(isMobile ? 14 : 21.r)),
         insetPadding: EdgeInsets.symmetric(
-            horizontal: isMobile ? 20 : 36.w,
-            vertical:   isMobile ? 56 : 36.h),
+            horizontal: isMobile ? 20 : 47.w,
+            vertical:   isMobile ? 56 : 47.h),
         child: SizedBox(
-          width: isMobile ? double.infinity : 640.w,
+          // Figma success dialog: 815 px wide on the 1800 frame.
+          width: isMobile ? double.infinity : 815.w,
           child: Padding(
-            padding: EdgeInsets.all(isMobile ? 20 : 32.r),
+            padding: EdgeInsets.all(isMobile ? 20 : 42.r),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (cmsData?.confirmMessage.svgUrl.isNotEmpty ?? false)
-                  SvgPicture.network(
+                  SmartNetworkImage( // BUG-251: raster-in-SVG safe
                     cmsData!.confirmMessage.svgUrl,
-                    width:  isMobile ? double.infinity : 260.w,
-                    height: isMobile ? 140 : 160.h,
+                    width:  isMobile ? double.infinity : 338.w,
+                    height: isMobile ? 140 : 208.h,
                     fit:    BoxFit.contain,
                   )
                 else
                   SvgPicture.asset(
                     'assets/images/contact_us/contact_send.svg',
-                    width:  isMobile ? 120 : 140.w,
-                    height: isMobile ? 100 : 120.h,
+                    width:  isMobile ? 120 : 182.w,
+                    height: isMobile ? 100 : 156.h,
                     fit:    BoxFit.contain,
                   ),
-                SizedBox(height: isMobile ? 16.0 : 22.h),
+                SizedBox(height: isMobile ? 16.0 : 29.h),
                 Text(
-                  title.toUpperCase(),
+                  title, // BUG-146: no forced capitals
                   textAlign: TextAlign.center,
                   style: StyleText.fontSize22Weight700.copyWith(
-                      fontSize: isMobile ? 14.0 : 20.sp,
+                      fontSize: isMobile ? 14.0 : 26.sp,
                       color:    Colors.black),
                 ),
-                SizedBox(height: isMobile ? 10.0 : 14.h),
+                SizedBox(height: isMobile ? 10.0 : 18.h),
                 Text(
                   desc,
                   textAlign: TextAlign.center,
                   style: StyleText.fontSize13Weight400.copyWith(
-                      fontSize: isMobile ? 12.0 : 14.sp,
+                      fontSize: isMobile ? 12.0 : 18.sp,
                       height:   1.7,
                       color:    Colors.black54),
                 ),

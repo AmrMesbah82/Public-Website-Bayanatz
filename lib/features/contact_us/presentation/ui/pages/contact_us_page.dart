@@ -41,6 +41,8 @@ import '../../../../../core/widgets/scroll_with_footer.dart';
 import '../../../../../core/main_widgets/app_navbar.dart';
 import '../../../../../core/theme/appcolors.dart';
 import '../../../../../core/theme/new_theme.dart';
+import '../../../../../core/theme/site_tokens.dart';
+import '../../../../../core/utils/form_validators.dart';
 import '../../../../home/presentation/controller/home_cubit.dart';
 import '../../../../home/presentation/controller/home_state.dart';
 import '../../../../home/presentation/controller/lang_state.dart';
@@ -52,6 +54,8 @@ import '../../controller/contact_us_location_cubit.dart';
 import '../../controller/contact_us_location_state.dart';
 import '../../controller/contact_us_cubit.dart';
 import '../../controller/contact_us_state.dart';
+import '../../../../../core/widgets/smart_network_image.dart';
+import '../../../../../core/responsive/site_layout.dart';
 
 part '../widgets/contact_helpers.dart';
 part '../widgets/reveal_coordinator.dart';
@@ -76,9 +80,17 @@ part '../widgets/social_icon_scaled.dart';
 part '../widgets/social_icon_raw.dart';
 part '../widgets/success_dialog.dart';
 
+// BUG-251: used from part files — referenced here so an IDE
+// "Optimize Imports" cannot drop the import.
+typedef _KeepSmartNetworkImage = SmartNetworkImage;
+typedef _KeepSiteLayout = SiteLayout; // Figma layout helpers (part files)
+
 // BUG-65: used from a part file — referenced here so an IDE
 // "Optimize Imports" can't drop the import.
 typedef _ScrollWithFooter = ScrollWithFooter;
+// Same reason (BUG-238 / BUG-245 imports used from part files).
+const bool Function(String, String) _kPhoneRule = isPlausiblePhoneNumber;
+const Color _kErrorRed = SiteColors.error;
 
 // Fallback colors
 const Color _kDefaultGreen  = Color(0xFF2D8C4E);

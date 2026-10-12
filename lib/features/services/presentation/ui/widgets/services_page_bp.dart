@@ -7,8 +7,8 @@ class _BP {
 
 double _desktopContentWidth(BuildContext context) {
   final double screen  = MediaQuery.of(context).size.width;
-  final double natural = (248.w * 4) + (8.w * 3);
-  return natural.clamp(0.0, screen - 64.0);
+  // Figma desktop content column (1400 of the 1800 frame).
+  return SiteLayout.contentWidth(context).clamp(0.0, screen - 32.0);
 }
 
 String _monthName(int m) => const [

@@ -85,7 +85,6 @@ class _TabletContentPanel extends StatelessWidget {
                         Text(
                           isRtl ? 'البيت الاستراتيجي' : 'Strategic House',
                           style: StyleText.fontSize16Weight700.copyWith(
-                            fontFamily: 'Cairo',
                             fontSize: 16.sp,
                             fontWeight: FontWeight.w700,
                             color: primaryColor,
@@ -122,7 +121,6 @@ class _TabletContentPanel extends StatelessWidget {
                         child: Text(
                           isRtl ? 'هذا المحتوى سيتوفر قريبًا' : 'This content will be available soon.', // BUG-17
                           style: StyleText.fontSize14Weight400.copyWith(
-                            fontFamily: 'Cairo',
                             fontSize: 13.sp,
                             color: Colors.grey[500],
                           ),

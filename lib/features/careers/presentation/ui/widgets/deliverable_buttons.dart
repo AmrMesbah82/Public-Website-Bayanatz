@@ -24,20 +24,26 @@ class _DeliverableButtonsState extends State<_DeliverableButtons> {
 
   @override
   Widget build(BuildContext context) {
+    // QA-Oct11 #9: full card width and start-aligned, so "Deliverables:"
+    // lines up with the text above and each line fills before wrapping.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(
-          spacing: 6.w,
-          runSpacing: 6.h,
+        SizedBox(
+          width: double.infinity,
+          child: Wrap(
+          alignment: WrapAlignment.start,
+          spacing: 6,
+          runSpacing: 6,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Text(
               _t('Deliverables:', 'المخرجات:', widget.isRtl),
+              // Figma (iPhone): "Deliverables:" SemiBold 14 black.
               style: StyleText.fontSize12Weight600.copyWith(
-                fontSize: 10.sp,
-                fontWeight: FontWeight.w700,
-                color: Colors.black87,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
               ),
             ),
             ...List.generate(widget.deliverables.length, (index) {
@@ -47,19 +53,21 @@ class _DeliverableButtonsState extends State<_DeliverableButtons> {
                   _selectedIndex == index ? null : index;
                 }),
                 child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 12.w,
-                    vertical: 6.h,
-                  ),
+                  // BUG-249: chips are a lighter caption (smaller, grey, no
+                  // border) than the description they follow.
+                  // Figma: chips #F1F2ED radius 4, SemiBold 12 / 150 % grey
+                  // (13 px kept for readability).
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(6.r),
+                    color: SiteColors.chipFill,
+                    borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     widget.deliverables[index],
                     style: StyleText.fontSize11Weight400.copyWith(
-                      fontSize: 10.sp,
-                      color: Colors.black54,
+                      fontSize: 13,
+                      height: 1.5,
+                      color: SiteColors.description,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -67,6 +75,7 @@ class _DeliverableButtonsState extends State<_DeliverableButtons> {
               );
             }),
           ],
+        ),
         ),
       ],
     );

@@ -27,66 +27,67 @@ class _MobileTeamCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(16.w),
+      // Figma (iPhone team card): radius 24, padding 25, 10 px gaps; 80 px
+      // tile (radius 14); name pill padding 10 SemiBold 16; text SemiBold
+      // 14/18 grey centred; deliverables SemiBold 14 + chips SemiBold 12.
+      padding: const EdgeInsets.all(25),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // ── Icon: network SVG if available ─────────────────────────────
           Container(
-            width: 60.w,
-            height: 60.w,
+            // BUG-214: light 10 % grey tint (was the dark CMS secondary).
+            width: 80,
+            height: 80,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8.r),
-              color: secondary,
+              borderRadius: BorderRadius.circular(14),
+              color: const Color(0x1A71717A),
             ),
             child: Center(
               child: data.iconUrl.isNotEmpty
-                  ? SvgPicture.network(
-                data.iconUrl,
-                width: 32.w,
-                height: 32.w,
-                fit: BoxFit.contain,
-                colorFilter:
-                ColorFilter.mode(primary, BlendMode.srcIn),
-                placeholderBuilder: (_) =>
-                    SizedBox(width: 32.w, height: 32.w),
-              )
-                  : SizedBox(width: 32.w, height: 32.w),
+                  ? TintedNetworkIcon(
+                  url: data.iconUrl,
+                  size: 50,
+                  color: primary,
+                )
+                  : const SizedBox(width: 50, height: 50),
             ),
           ),
-          SizedBox(height: 10.h),
+          const SizedBox(height: 10),
           Container(
-            padding:
-            EdgeInsets.symmetric(horizontal: 12.w, vertical: 5.h),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: primary,
-              borderRadius: BorderRadius.circular(6.r),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               name,
               textAlign: TextAlign.center,
               style: StyleText.fontSize12Weight600.copyWith(
-                fontSize: 10.sp,
+                fontSize: 16,
+                height: 1.5,
                 fontWeight: FontWeight.w600,
                 color: Colors.white,
               ),
             ),
           ),
-          SizedBox(height: 10.h),
+          const SizedBox(height: 10),
           Text(
             desc,
             textAlign: TextAlign.center,
+            // BUG-249: description reads stronger than the chips.
             style: StyleText.fontSize12Weight600.copyWith(
-              fontSize: 10.sp,
-              height: 1.6,
-              color: AppColors.secondaryText.withOpacity(.7),
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              height: 18 / 14,
+              color: SiteColors.description,
             ),
           ),
-          SizedBox(height: 10.h),
+          const SizedBox(height: 10),
           _DeliverableButtons(
             deliverables: deliverables,
             primary: primary,

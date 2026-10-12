@@ -363,7 +363,7 @@ abstract class AppTextStyles {
 
   static TextStyle get font10BlackCairoMediam => _dyn(GoogleFonts.cairo(
     fontSize: 10.sp,
-    color: const Color(0xff797979),
+    color: const Color(0xff666666),
     fontWeight: AppFontWeights.medium,
   ));
 

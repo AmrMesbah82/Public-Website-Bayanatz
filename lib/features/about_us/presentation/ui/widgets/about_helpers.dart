@@ -9,8 +9,8 @@ Color _hoverTint(Color primary) => primary.withOpacity(0.12);
 
 double _desktopContentWidth(BuildContext context) {
   final double screen = MediaQuery.of(context).size.width;
-  final double natural = (248.w * 4) + (8.w * 3);
-  return natural.clamp(0.0, screen - 64.0);
+  // Figma desktop content column (1400 of the 1800 frame).
+  return SiteLayout.contentWidth(context).clamp(0.0, screen - 32.0);
 }
 
 String _ab(AboutBilingualText b, bool isRtl) {
@@ -182,8 +182,22 @@ Widget _netImg({
       if (snapshot.hasData) {
         final bytes = snapshot.data!;
         if (hintSvg || _isSvgBytes(bytes)) {
-          return SvgPicture.memory(
-            bytes,
+          // BUG-227: drop full-canvas background shapes before tinting, so a
+          // selected (white / green) icon keeps its glyph instead of turning
+          // into a solid square. BUG-251: raster-in-SVG → draw the bitmap.
+          final String raw = utf8.decode(bytes, allowMalformed: true);
+          final m = RegExp(
+            r'''href\s*=\s*["']data:image/(?:png|jpe?g|webp|gif);base64,([^"']+)["']''',
+          ).firstMatch(raw);
+          if (m != null && !RegExp(r'<(path|text|polygon|polyline|circle|ellipse|line)\b').hasMatch(raw)) {
+            try {
+              return Image.memory(
+                base64.decode(m.group(1)!.replaceAll(RegExp(r'\s'), '')),
+                width: width, height: height, fit: fit);
+            } catch (_) {/* fall through to the SVG */}
+          }
+          return SvgPicture.string(
+            colorFilter != null ? TintedNetworkIcon.stripBackground(raw) : raw,
             width: width,
             height: height,
             fit: fit,
@@ -245,13 +259,12 @@ Widget _topTabIcon({
   if (iconUrl.isEmpty) return fallbackIcon;
 
   if (_isSvgUrl(iconUrl)) {
-    return SvgPicture.network(
-      iconUrl,
-      width: size,
-      height: size,
-      fit: BoxFit.contain,
-      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-      placeholderBuilder: (_) => SizedBox(width: size, height: size),
+    // BUG-227: tint only the glyph (the selected tab showed a blank square).
+    return TintedNetworkIcon(
+      url: iconUrl,
+      size: size,
+      color: color,
+      fallback: fallbackIcon,
     );
   }
 

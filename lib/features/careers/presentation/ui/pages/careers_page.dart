@@ -20,6 +20,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'package:website_app/core/widgets/button.dart';
 import 'package:website_app/core/widgets/navigator.dart';
@@ -29,6 +30,10 @@ import '../../../../../core/widgets/scroll_with_footer.dart';
 import '../../../../../core/main_widgets/app_navbar.dart';
 import '../../../../../core/theme/appcolors.dart';
 import '../../../../../core/theme/new_theme.dart';
+import '../../../../../core/theme/site_tokens.dart';
+import '../../../../../core/responsive/site_layout.dart';
+import '../../../../../core/widgets/tinted_network_icon.dart';
+import '../../../../../core/widgets/smart_network_image.dart';
 import '../../../../home/presentation/controller/home_cubit.dart';
 import '../../../../home/presentation/controller/home_state.dart';
 import '../../../../home/presentation/controller/lang_state.dart';
@@ -73,6 +78,14 @@ part '../widgets/desktop_deliverable_buttons.dart';
 part '../widgets/bullet_text.dart';
 part '../widgets/plain_text.dart';
 part '../widgets/apply_now_btn_desktop.dart';
+
+// Imports used only from part files — referenced here so an IDE
+// "Optimize Imports" cannot drop them (BUG-214 / BUG-249 / BUG-188).
+typedef _KeepTintedIcon = TintedNetworkIcon;
+typedef _KeepSmartImage = SmartNetworkImage;
+typedef _KeepSiteLayout = SiteLayout;
+typedef _KeepGoogleFonts = GoogleFonts; // Playfair stats (desktop_body part)
+const Color _kKeepTokens = SiteColors.primary;
 
 // ── Bilingual helper ──────────────────────────────────────────────────────────
 String _t(String en, String ar, bool isRtl) => isRtl ? ar : en;

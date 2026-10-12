@@ -414,13 +414,17 @@ class JobPostModel {
     return 0;
   }
 
+  // BUG-277 (admin): job dates are now stored in UTC ("…Z") — always work
+  // with LOCAL time so day-based logic and labels keep the admin's date.
   static DateTime? _asDate(dynamic v) {
     if (v == null) return null;
-    if (v is DateTime) return v;
-    if (v is String) return v.trim().isEmpty ? null : DateTime.tryParse(v);
+    if (v is DateTime) return v.toLocal();
+    if (v is String) {
+      return v.trim().isEmpty ? null : DateTime.tryParse(v.trim())?.toLocal();
+    }
     if (v is num) return DateTime.fromMillisecondsSinceEpoch(v.toInt());
     try {
-      return (v as dynamic).toDate() as DateTime; // Firestore Timestamp
+      return ((v as dynamic).toDate() as DateTime).toLocal(); // Timestamp
     } catch (_) {
       return null;
     }
@@ -647,7 +651,7 @@ class JobPostModel {
       hiringStartDate: DateTime(2026, 8, 28),
       hiringEndDate: DateTime(2026, 8, 28),
       maxApplications: 100,
-      requiredDocuments: [RequiredDocument(id: '1', name: 'Resume', docType: DocType.pdf), RequiredDocument(id: '2', name: 'Cover Letter', docType: DocType.pdf)],
+      requiredDocuments: [RequiredDocument(id: '1', name: 'Resume', docType: DocType.pdf), RequiredDocument(id: '2', name: 'Cover Letter', docType: DocType.link)],
       status: JobStatus.active,
       postedDate: DateTime.now().subtract(const Duration(days: 2)),
       totalApplications: 100,

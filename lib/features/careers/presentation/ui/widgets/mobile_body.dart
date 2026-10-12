@@ -34,29 +34,25 @@ class _MobileBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: 22.h),
+          // Figma (iPhone): title 70 px under the header, intro card 20 px
+          // below it, statistics 20 px lower, tabs 20, content 20.
+          const SizedBox(height: 60),
           _Reveal(
             delay: const Duration(milliseconds: 60),
             direction: _SlideDirection.fromLeft,
             duration: const Duration(milliseconds: 650),
-            // BUG-142: same 10.sp inset as the intro text inside its card.
-            child: Padding(
-              padding: EdgeInsetsDirectional.only(start: 10.sp),
-              child: Text(
-                _t('Careers', 'الوظائف', isRtl),
-                style: StyleText.fontSize28Weight600.copyWith(
-                  fontSize: 30.sp,
-                  fontWeight: FontWeight.w700,
-                  color: primary,
-                ),
-              ),
+            // QA-Oct11 #8: the title starts on the card's edge (no extra
+            // start inset — it looked shifted against the container).
+            child: Text(
+              _t('Careers', 'الوظائف', isRtl),
+              style: SiteText.pageTitle(context, color: primary), // BUG-242
             ),
           ),
-          SizedBox(height: 14.h),
+          const SizedBox(height: 20),
           _Reveal(
             delay: const Duration(milliseconds: 100),
             direction: _SlideDirection.fromBottom,
@@ -72,7 +68,7 @@ class _MobileBody extends StatelessWidget {
                   : careersData.overview.actionButtonLabel.en,
             ),
           ),
-          SizedBox(height: 16.h),
+          const SizedBox(height: 20),
           _Reveal(
             delay: const Duration(milliseconds: 140),
             direction: _SlideDirection.fromBottom,
@@ -83,7 +79,7 @@ class _MobileBody extends StatelessWidget {
               statistics: careersData.statistics,
             ),
           ),
-          SizedBox(height: 20.h),
+          const SizedBox(height: 20),
           _Reveal(
             delay: const Duration(milliseconds: 170),
             direction: _SlideDirection.fromBottom,
@@ -108,7 +104,7 @@ class _MobileBody extends StatelessWidget {
               teamTitle: teamTitle,
             ),
           ),
-          SizedBox(height: 16.h),
+          const SizedBox(height: 20),
           _buildMobileTabContent(
               selectedTab, primary, secondary, isRtl),
           SizedBox(height: 28.h),

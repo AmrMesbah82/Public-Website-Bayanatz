@@ -35,14 +35,14 @@ class _BlockList extends StatelessWidget {
           numberingCounter = 0;
           if (text.trim().isEmpty) break;
           children.add(Padding(
-            padding: EdgeInsets.only(bottom: isMobile ? 10 : 10.h),
+            padding: EdgeInsets.only(
+                top: isMobile ? 0 : 24.w, bottom: isMobile ? 10 : 0),
             child: Text(
               text,
               style: StyleText.fontSize14Weight400.copyWith(
-                fontFamily: 'Cairo',
                 fontSize:   fontSize,
-                height:     1.7,
-                color:      AppColors.secondaryBlack,
+                height:     isMobile ? 1.7 : 1.8, // Figma 180 %
+                color:      SiteColors.description, // BUG-136 / BUG-245
               ),
             ),
           ));
@@ -53,28 +53,27 @@ class _BlockList extends StatelessWidget {
             numberingCounter++;
             final int idx = numberingCounter;
             children.add(Padding(
-              padding: EdgeInsets.only(bottom: isMobile ? 10 : 10.h),
+              padding: EdgeInsets.only(bottom: isMobile ? 10 : 0),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     '$idx.  ',
                     style: StyleText.fontSize14Weight400.copyWith(
-                      fontFamily: 'Cairo',
                       fontSize:   fontSize,
-                      height:     1.7,
-                      fontWeight: FontWeight.w600,
-                      color:      Colors.black87,
+                      height:     isMobile ? 1.7 : 1.8, // Figma 180 %
+                      fontWeight: FontWeight.w700,
+                      color:      SiteColors.title,
                     ),
                   ),
                   Expanded(
-                    child: Text(
+                    child: _richLine(
                       line,
-                      style: StyleText.fontSize14Weight400.copyWith(
-                        fontFamily: 'Cairo',
+                      StyleText.fontSize14Weight400.copyWith(
                         fontSize:   fontSize,
-                        height:     1.7,
-                        color:      AppColors.secondaryBlack,
+                        height:     isMobile ? 1.7 : 1.8, // Figma 180 %
+                        fontWeight: FontWeight.w500,
+                        color:      SiteColors.description,
                       ),
                     ),
                   ),
@@ -88,7 +87,7 @@ class _BlockList extends StatelessWidget {
           numberingCounter = 0;
           for (final line in _lines(text)) {
             children.add(Padding(
-              padding: EdgeInsets.only(bottom: isMobile ? 10 : 10.h),
+              padding: EdgeInsets.only(bottom: isMobile ? 10 : 0),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -108,13 +107,13 @@ class _BlockList extends StatelessWidget {
                     ),
                   ),
                   Expanded(
-                    child: Text(
+                    child: _richLine(
                       line,
-                      style: StyleText.fontSize14Weight400.copyWith(
-                        fontFamily: 'Cairo',
+                      StyleText.fontSize14Weight400.copyWith(
                         fontSize:   fontSize,
-                        height:     1.7,
-                        color:      AppColors.secondaryBlack,
+                        height:     isMobile ? 1.7 : 1.8, // Figma 180 %
+                        fontWeight: FontWeight.w500,
+                        color:      SiteColors.description,
                       ),
                     ),
                   ),
@@ -129,6 +128,20 @@ class _BlockList extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
+  }
+
+  /// BUG-190: "Enhanced customer experience: …" — the term before the first
+  /// colon is shown bold in the dark text colour (Figma), the rest grey.
+  Widget _richLine(String line, TextStyle base) {
+    final int c = line.indexOf(':');
+    if (c <= 0 || c > 80) return Text(line, style: base);
+    return Text.rich(TextSpan(children: [
+      TextSpan(
+        text: line.substring(0, c + 1),
+        style: base.copyWith(fontWeight: FontWeight.w600, color: SiteColors.textStrong),
+      ),
+      TextSpan(text: line.substring(c + 1), style: base),
+    ]));
   }
 
   // Splits block text into non-empty trimmed lines.

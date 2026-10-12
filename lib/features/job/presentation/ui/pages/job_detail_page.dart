@@ -8,7 +8,6 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -26,10 +25,14 @@ import '../../../../home/presentation/controller/home_cubit.dart';
 import '../../../../home/presentation/controller/home_state.dart';
 import '../../../../home/presentation/controller/lang_state.dart';
 import 'package:website_app/core/theme/new_theme.dart';
-import 'package:website_app/core/widgets/format_heper.dart';
 import 'package:website_app/core/widgets/format_helper.dart';
 
 import '../widgets/job_unavailable_view.dart';
+import '../widgets/job_i18n.dart';
+import '../../../../../core/utils/page_meta.dart';
+import '../widgets/job_pdf.dart';
+import '../../../../../core/responsive/site_layout.dart';
+import '../../../../../core/theme/site_tokens.dart';
 
 part '../widgets/labels.dart';
 
@@ -132,9 +135,66 @@ class _JobDetailPageState extends State<JobDetailPage> {
         _job = FlatCodec.decode(doc.data()!, JobPostModel.flatTemplate);
         _loading = false;
       });
+      // BUG-253: "Senior Flutter Developer — Jobs — Bayanatz".
+      _publishTitle();
     } else {
       setState(() => _loading = false);
     }
+  }
+
+  /// BUG-263: real, multi-page PDF of the job with selectable text.
+  Future<void> _downloadPdf(_Labels labels, bool isRtl) async {
+    if (_job == null) return;
+    List<String> lines(String key) => _biText(_job![key] as Map<String, dynamic>?, isRtl)
+        .split('\n')
+        .map((l) => l.trim().replaceFirst(RegExp(r'^[•\-\*]\s*'), ''))
+        .where((l) => l.isNotEmpty)
+        .toList();
+    final skills = (_job!['requiredSkills'] as List<dynamic>? ?? [])
+        .map((s) => _biText(s['name'] as Map<String, dynamic>?, isRtl))
+        .where((s) => s.isNotEmpty)
+        .toList();
+    final benefits = (_job!['benefits'] as List<dynamic>? ?? []).map((b) {
+      final m = b as Map<String, dynamic>;
+      return MapEntry(
+        _biText(m['title'] as Map<String, dynamic>?, isRtl),
+        _biText(m['shortDescription'] as Map<String, dynamic>?, isRtl),
+      );
+    }).where((e) => e.key.isNotEmpty).toList();
+    await downloadJobPdf(
+      title: _biText(_job!['title'] as Map<String, dynamic>?, isRtl),
+      facts: [
+        MapEntry(labels.hireDate, _fmtDate(_str('hiringStartDate'), isRtl)),
+        MapEntry(labels.hireEndDate, _fmtDate(_str('hiringEndDate'), isRtl)),
+        MapEntry(labels.workType,
+            WorkTypeExt.fromString(_str('workType')).localized(isRtl)),
+        MapEntry(labels.location, _location(isRtl)),
+        MapEntry(labels.employmentType,
+            EmploymentTypeExt.fromString(_str('employmentType')).localized(isRtl)),
+        MapEntry(labels.experienceLevel,
+            ExperienceLevelExt.fromString(_str('experienceLevel')).localized(isRtl)),
+        MapEntry(labels.compensationRange, _salary(isRtl)),
+        MapEntry(labels.requiredQualification,
+            _biText(_job!['requiredQualification'] as Map<String, dynamic>?, isRtl)),
+      ],
+      skillsLabel: labels.skills,
+      skills: skills,
+      sections: [
+        JobPdfSection(labels.aboutThisPosition, lines('aboutThisPosition')),
+        JobPdfSection(labels.requirements, lines('requirements')),
+        JobPdfSection(labels.preferredSkills, lines('preferredSkills')),
+      ],
+      benefitsLabel: labels.benefits,
+      benefits: benefits,
+      isRtl: isRtl,
+    );
+  }
+
+  void _publishTitle() {
+    if (_job == null || !mounted) return;
+    final bool ar = context.read<LanguageCubit>().state.isArabic;
+    PageMeta.setDetailTitle(
+        '/jobs/${widget.jobId}', _biText(_job!['title'] as Map<String, dynamic>?, ar));
   }
 
   String _biText(Map<String, dynamic>? map, bool isRtl) {
@@ -150,7 +210,7 @@ class _JobDetailPageState extends State<JobDetailPage> {
   // BUG-110: dates and values were always English on the Arabic page.
   String _fmtDate(String? iso, bool isRtl) {
     if (iso == null || iso.isEmpty) return '—';
-    final dt = DateTime.tryParse(iso);
+    final dt = DateTime.tryParse(iso)?.toLocal(); // BUG-277: stored in UTC
     if (dt == null) return iso;
     return FormDateTimeHelper.formatDayMonthYear(dt, arabic: isRtl);
   }
@@ -158,45 +218,60 @@ class _JobDetailPageState extends State<JobDetailPage> {
   String _num(String text, bool isRtl) =>
       isRtl ? FormDateTimeHelper.toArabicDigits(text) : text;
 
-  /// Figma (job page, Compensation Range "5000 - 10000"): numbers only.
-  String _salary(bool isRtl) {
-    final min = (_job!['salaryMin'] as num?)?.toInt() ?? 0;
-    final max = (_job!['salaryMax'] as num?)?.toInt() ?? 0;
-    final range = max > 0 && max != min ? '$min - $max' : '$min';
-    return _num(range, isRtl);
+  /// BUG-111: the salary always carries its currency (as on the Jobs list).
+  String _salary(bool isRtl) => jobSalaryRange(
+        _job!['salaryMin'] as num?,
+        _job!['salaryMax'] as num?,
+        _str('salaryCurrency'),
+        isRtl,
+      );
+
+  /// BUG-234: On Site / Hybrid → office location, Remote → "Remote".
+  String _location(bool isRtl) {
+    if (WorkTypeExt.fromString(_str('workType')) == WorkType.remote) {
+      return isRtl ? 'عن بُعد' : 'Remote';
+    }
+    return jobLocation(context, _str('location'), isRtl);
   }
 
-  /// Apply button (bottom of the page, as in Figma).
+  /// Apply button — Figma "Apply →". BUG-221: one fixed height.
+  /// BUG-257: real focusable button.
+  /// QA-Oct11 #37: the ONE height of the bottom row (Apply, share, PDF).
+  double _actionHeight() =>
+      MediaQuery.sizeOf(context).width < 600 ? JobShareButton.size + 8 : 60.w;
+
   Widget _applyButton(_Labels labels, Color primary) {
-    return GestureDetector(
-      onTap: () => context.go('/jobs/${widget.jobId}/apply'),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: Semantics(
-          button: true,
-          label: labels.apply,
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 10.h),
-            decoration: BoxDecoration(
-              color: primary,
-              borderRadius: BorderRadius.circular(8.r),
+    final bool phone = MediaQuery.sizeOf(context).width < 600;
+    // Figma: "Apply →" 200×60, radius 10, Cairo Medium 25 white.
+    return SizedBox(
+      height: _actionHeight(),
+      child: ElevatedButton(
+        onPressed: () => context.go('/jobs/${widget.jobId}/apply'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: EdgeInsets.symmetric(horizontal: phone ? 20 : 50.w),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(phone ? 8 : 10.r)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              labels.apply,
+              style: StyleText.fontSize14Weight400.copyWith(
+                fontSize: phone ? 16 : 25.sp,
+                fontWeight: phone ? FontWeight.w700 : FontWeight.w500,
+                color: Colors.white,
+              ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  labels.apply,
-                  style: StyleText.fontSize14Weight400.copyWith(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-                SizedBox(width: 6.w),
-                Icon(Icons.arrow_forward, size: 16.sp, color: Colors.white),
-              ],
-            ),
-          ),
+            SizedBox(width: phone ? 8 : 20.w),
+            // QA-Oct11 #40: arrow_forward is mirrored by Flutter in RTL, so
+            // it points LEFT in Arabic (arrow_back was mirrored to the right).
+            Icon(Icons.arrow_forward,
+                size: phone ? 18 : 25.w, color: Colors.white),
+          ],
         ),
       ),
     );
@@ -236,16 +311,17 @@ class _JobDetailPageState extends State<JobDetailPage> {
         if (openState == JobOpenState.notStarted) {
           return JobUnavailableView(
             reason: JobUnavailableReason.notStarted,
-            opensOn: DateTime.tryParse(_str('hiringStartDate')),
+            opensOn: DateTime.tryParse(_str('hiringStartDate'))?.toLocal(), // BUG-277
           );
         }
 
         // BUG-134: phones got a 1000.w column (title at x≈4). 16 px margins.
         final double screenW = MediaQuery.sizeOf(context).width;
         final bool isPhone = screenW < 600;
-        final double contentW = isPhone ? screenW - 32 : 1000.w;
+        final double contentW = SiteLayout.contentWidth(context);
         // BUG-141: one inner left edge for every card's text.
-        final double cardPad = isPhone ? 16 : 24.sp;
+        // Figma: the job card has 50 px padding on desktop.
+        final double cardPad = isPhone ? 15 : 50.w;
 
         final title = _biText(_job!['title'] as Map<String, dynamic>?, isRtl);
         final about = _biText(
@@ -286,7 +362,7 @@ class _JobDetailPageState extends State<JobDetailPage> {
                       width: double.infinity,
                       child: Column(
                         children: [
-                          SizedBox(height: 40.h),
+                          SizedBox(height: isPhone ? 60 : 38.w),
 
                           // ── Centered content column ──
                           Center(
@@ -295,45 +371,39 @@ class _JobDetailPageState extends State<JobDetailPage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // ── Title ── (Figma job page: no Apply button
-                                  // here — Apply stays at the bottom.)
-                                  Padding(
-                                    padding: EdgeInsets.symmetric(horizontal: cardPad),
-                                    child: Text(
-                                      FormatHelper.capitalize(title),
-                                      style: StyleText.fontSize14Weight400.copyWith(
-                                        fontSize: isPhone ? 26 : 36.sp,
-                                        fontWeight: FontWeight.w700,
-                                        color: primary,
-                                      ),
-                                    ),
+                                  // ── Title ── BUG-195: as typed.
+                                  // QA-Oct11 #10 / #34: no Apply button next
+                                  // to the title (phone and desktop) — Apply
+                                  // stays at the bottom of the card.
+                                  Text(
+                                    title,
+                                    style: SiteText.pageTitle(context, color: primary),
                                   ),
-                                  SizedBox(height: 24.h),
+                                  SizedBox(height: isPhone ? 24.h : 38.w),
 
-                                  // ── Job Info Card ──
+                                  // ── ONE white card (Figma 451:15249) ──
                                   Container(
                                     width: double.infinity,
-                                    padding: EdgeInsets.symmetric(horizontal: cardPad, vertical: 16.sp),
+                                    padding: EdgeInsets.all(cardPad),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
-                                      borderRadius: BorderRadius.circular(12.r),
+                                      borderRadius: BorderRadius.circular(15),
                                     ),
                                     child: Column(
-                                      crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
+                                        // Figma: Cairo Medium 30 black.
                                         Text(
-                                          FormatHelper.capitalize(title),
-                                          style: StyleText.fontSize14Weight400.copyWith(
-
-                                            fontSize: 18.sp,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.black87,
-                                          ),
+                                          title,
+                                          // Figma: Medium 30 (desktop) / 16 (iPhone), black.
+                                          style: SiteText.cardTitle(context, color: Colors.black)
+                                              .copyWith(
+                                                  fontSize: isPhone ? 16 : 30.sp,
+                                                  fontWeight: FontWeight.w500),
                                         ),
-                                        SizedBox(height: 16.h),
-                                        Divider(color: _kDivider),
-                                        SizedBox(height: 12.h),
+                                        SizedBox(height: isPhone ? 12.h : 20.w),
+                                        Divider(color: _kDivider, height: 1),
+                                        SizedBox(height: isPhone ? 16.h : 20.w),
                                         _infoRow(
                                           labels.hireDate,
                                           _fmtDate(_str('hiringStartDate'), isRtl),
@@ -341,15 +411,15 @@ class _JobDetailPageState extends State<JobDetailPage> {
                                           _fmtDate(_str('hiringEndDate'), isRtl),
                                           primary,
                                         ),
-                                        SizedBox(height: 8.h),
+                                        SizedBox(height: isPhone ? 10.h : 8.w),
                                         _infoRow(
                                           labels.workType,
                                           WorkTypeExt.fromString(_str('workType')).localized(isRtl),
-                                          '',
-                                          '',
+                                          _location(isRtl).isEmpty ? '' : labels.location,
+                                          _location(isRtl),
                                           primary,
                                         ),
-                                        SizedBox(height: 8.h),
+                                        SizedBox(height: isPhone ? 10.h : 8.w),
                                         _infoRow(
                                           labels.employmentType,
                                           EmploymentTypeExt.fromString(_str('employmentType')).localized(isRtl),
@@ -362,7 +432,7 @@ class _JobDetailPageState extends State<JobDetailPage> {
                                           ),
                                           primary,
                                         ),
-                                        SizedBox(height: 8.h),
+                                        SizedBox(height: isPhone ? 10.h : 8.w),
                                         _infoRow(
                                           labels.experienceLevel,
                                           ExperienceLevelExt.fromString(_str('experienceLevel')).localized(isRtl),
@@ -370,322 +440,92 @@ class _JobDetailPageState extends State<JobDetailPage> {
                                           _salary(isRtl),
                                           primary,
                                         ),
-                                        SizedBox(height: 8.h),
+                                        SizedBox(height: isPhone ? 10.h : 8.w),
                                         _singleInfo(
                                           labels.requiredQualification,
                                           qualification,
                                           primary,
                                         ),
                                         if (skills.isNotEmpty) ...[
-                                          SizedBox(height: 12.h),
-                                          Row(
-                                            crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                            children: [
-                                              Text(
-                                                labels.skills,
-                                                style: StyleText.fontSize14Weight600.copyWith(
-
-                                                  fontSize: 14.sp,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Colors.black87,
-                                                ),
-                                              ),
-                                              SizedBox(width: 10.w),
-                                              Expanded(
-                                                child: Wrap(
-                                                  spacing: 8.w,
-                                                  runSpacing: 6.h,
-                                                  children: skills
-                                                      .map(
-                                                        (s) => Container(
-                                                      padding:
-                                                      EdgeInsets.symmetric(
-                                                        horizontal:
-                                                        12.w,
-                                                        vertical: 4.h,
-                                                      ),
-                                                      // BUG-113: Figma skill chip — light
-                                                      // background, grey text, no border.
-                                                      decoration: BoxDecoration(
-                                                        color: bgColor,
-                                                        borderRadius:
-                                                        BorderRadius.circular(
-                                                          6.r,
-                                                        ),
-                                                      ),
-                                                      child: Text(
-                                                        FormatHelper.capitalize(s),
-                                                        style: StyleText.fontSize14Weight400.copyWith(
-
-                                                          fontSize: 13.sp,
-                                                          color: const Color(0xFF797979),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  )
-                                                      .toList(),
-                                                ),
-                                              ),
-                                            ],
+                                          SizedBox(height: isPhone ? 14.h : 8.w),
+                                          // BUG-206 / BUG-250: shared chip
+                                          // style, label on the first chip row.
+                                          JobSkillsRow(
+                                            label: labels.skills,
+                                            skills: skills,
+                                            // Figma: "Skills:" Medium 24 grey.
+                                            labelStyle: StyleText.fontSize14Weight600.copyWith(
+                                              fontSize: isPhone ? 14 : 24.sp,
+                                              fontWeight: FontWeight.w500,
+                                              color: SiteColors.description,
+                                            ),
                                           ),
                                         ],
+                                        SizedBox(height: isPhone ? 24.h : 25.w),
+
+                                        // BUG-205: Figma sections — no extra
+                                        // "About Company" block.
+                                        if (about.isNotEmpty)
+                                          _textSection(labels.aboutThisPosition, about, primary),
+                                        if (requirements.isNotEmpty)
+                                          _textSection(labels.requirements, requirements, primary),
+                                        if (preferred.isNotEmpty)
+                                          _textSection(labels.preferredSkills, preferred, primary),
+                                        if (benefits.isNotEmpty)
+                                          _benefitsSection(labels, benefits, primary, isRtl, isPhone),
+
+                                        // ── Bottom buttons ── BUG-221: inside
+                                        // the card, on the same edges as the
+                                        // section boxes above, one height.
+                                        // BUG-222: the shared square share
+                                        // button ("Copy link").
+                                        SizedBox(height: isPhone ? 8.h : 5.w), // + 25 box margin = Figma 30
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                JobShareButton(
+                                                  jobId: widget.jobId,
+                                                  title: _biText(_job!['title'] as Map<String, dynamic>?, false),
+                                                  primary: primary,
+                                                  isAr: isRtl,
+                                                  // QA-Oct11 #37: same height as Apply.
+                                                  dimension: _actionHeight(),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                // BUG-263: printable PDF.
+                                                Tooltip(
+                                                  message: labels.downloadPdf,
+                                                  child: SizedBox.square(
+                                                    // QA-Oct11 #37: same height as Apply.
+                                                    dimension: _actionHeight(),
+                                                    child: OutlinedButton(
+                                                      onPressed: () => _downloadPdf(labels, isRtl),
+                                                      style: OutlinedButton.styleFrom(
+                                                        padding: EdgeInsets.zero,
+                                                        foregroundColor: primary,
+                                                        side: BorderSide(color: primary),
+                                                        shape: RoundedRectangleBorder(
+                                                            borderRadius: BorderRadius.circular(8)),
+                                                      ),
+                                                      child: Semantics(
+                                                        label: labels.downloadPdf,
+                                                        child: const Icon(Icons.picture_as_pdf_outlined, size: 20),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            _applyButton(labels, primary),
+                                          ],
+                                        ),
                                       ],
                                     ),
                                   ),
-                                  SizedBox(height: 20.h),
-
-                                  // ── About Company (from AboutCompanyCubit) ──
-                                  BlocBuilder<
-                                      AboutCompanyCubit,
-                                      AboutCompanyState
-                                  >(
-                                    builder: (context, aboutState) {
-                                      String aboutCompanyText = '';
-
-                                      if (aboutState is AboutCompanyLoaded) {
-                                        aboutCompanyText = isRtl
-                                            ? aboutState.data.aboutAr
-                                            : aboutState.data.aboutEn;
-                                      } else if (aboutState
-                                      is AboutCompanySaved) {
-                                        aboutCompanyText = isRtl
-                                            ? aboutState.data.aboutAr
-                                            : aboutState.data.aboutEn;
-                                      } else if (aboutState
-                                      is AboutCompanyError &&
-                                          aboutState.lastData != null) {
-                                        aboutCompanyText = isRtl
-                                            ? aboutState.lastData!.aboutAr
-                                            : aboutState.lastData!.aboutEn;
-                                      }
-
-                                      if (aboutCompanyText.trim().isEmpty) {
-                                        return const SizedBox.shrink();
-                                      }
-
-                                      return _textSection(
-                                        labels.aboutCompany,
-                                        aboutCompanyText,
-                                        primary,
-                                      );
-                                    },
-                                  ),
-
-
-
-                                  // ── About This Position ──
-                                  if (about.isNotEmpty)
-                                    _textSection(
-                                      labels.aboutThisPosition,
-                                      about,
-                                      primary,
-                                    ),
-
-
-
-                                  // ── Requirements ──
-                                  if (requirements.isNotEmpty)
-                                    _textSection(
-                                      labels.requirements,
-                                      requirements,
-                                      primary,
-                                    ),
-
-                                  // ── Preferred Skills ──
-                                  if (preferred.isNotEmpty)
-                                    _textSection(
-                                      labels.preferredSkills,
-                                      preferred,
-                                      primary,
-                                    ),
-
-                                  // ── Benefits ──
-                                  if (benefits.isNotEmpty)
-                                    Container(
-                                      width: double.infinity,
-                                      margin: EdgeInsets.only(bottom: 20.h),
-                                      padding: EdgeInsets.all(cardPad),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(
-                                          12.r,
-                                        ),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            labels.benefits,
-                                            style: StyleText.fontSize14Weight400.copyWith(
-
-                                              fontSize: 18.sp,
-                                              fontWeight: FontWeight.w700,
-                                              color: primary,
-                                            ),
-                                          ),
-                                          SizedBox(height: 16.h),
-                                          ...benefits.map((b) {
-                                            final bMap =
-                                            b as Map<String, dynamic>;
-                                            final bTitle = _biText(
-                                              bMap['title']
-                                              as Map<String, dynamic>?,
-                                              isRtl,
-                                            );
-                                            final bDesc = _biText(
-                                              bMap['shortDescription']
-                                              as Map<String, dynamic>?,
-                                              isRtl,
-                                            );
-                                            return Padding(
-                                              padding: EdgeInsets.only(
-                                                bottom: 16.h,
-                                              ),
-                                              child: Row(
-                                                crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                                children: [
-                                                  SizedBox(
-                                                    width: 180.w,
-                                                    child: Text(
-                                                      FormatHelper.capitalize(bTitle),
-                                                      style: StyleText.fontSize14Weight600.copyWith(
-
-                                                        fontSize: 14.sp,
-                                                        fontWeight:
-                                                        FontWeight.w600,
-                                                        color: Colors.black87,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  SizedBox(width: 16.w),
-                                                  Expanded(
-                                                    child: Text(
-                                                      bDesc,
-                                                      style: StyleText.fontSize14Weight400.copyWith(
-
-                                                        fontSize: 13.sp,
-                                                        height: 1.6,
-                                                        color: Colors.black54,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            );
-                                          }),
-                                        ],
-                                      ),
-                                    ),
-
-                                  // ── Bottom buttons ── (BUG-141: inside the
-                                  // same text column as the cards)
-                                  Padding(
-                                    padding: EdgeInsets.symmetric(horizontal: cardPad),
-                                    child: Row(
-                                    mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      GestureDetector(
-                                        onTap: () {
-                                          final timestamp = DateTime.now()
-                                              .millisecondsSinceEpoch;
-                                          final base = Uri.base.origin;
-                                          final jobTitle = _biText(
-                                            _job!['title']
-                                            as Map<String, dynamic>?,
-                                            false,
-                                          );
-                                          final slug = jobTitle
-                                              .toLowerCase()
-                                              .replaceAll(' ', '-');
-                                          final url =
-                                              '$base/jobs/${widget.jobId}?title=$slug&t=$timestamp';
-                                          Clipboard.setData(
-                                            ClipboardData(text: url),
-                                          );
-                                          showDialog(
-                                            context: context,
-                                            builder: (_) => AlertDialog(
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                BorderRadius.circular(12.r),
-                                              ),
-                                              title: Text(
-                                                labels.linkCopied,
-                                                style: StyleText.fontSize16Weight700.copyWith(
-
-                                                  fontSize: 16.sp,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: primary,
-                                                ),
-                                              ),
-                                              content: Container(
-                                                padding: EdgeInsets.symmetric(
-                                                  horizontal: 12.w,
-                                                  vertical: 10.h,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: bgColor,
-                                                  borderRadius:
-                                                  BorderRadius.circular(
-                                                    8.r,
-                                                  ),
-                                                  border: Border.all(
-                                                    color: _kDivider,
-                                                  ),
-                                                ),
-                                                child: Text(
-                                                  url,
-                                                  style: StyleText.fontSize14Weight400.copyWith(
-
-                                                    fontSize: 12.sp,
-                                                    color: Colors.black87,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                        child: Container(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: 20.w,
-                                            vertical: 10.h,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: primary,
-                                            borderRadius: BorderRadius.circular(
-                                              8.r,
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(
-                                                Icons.share,
-                                                size: 16.sp,
-                                                color: Colors.white,
-                                              ),
-                                              SizedBox(width: 6.w),
-                                              Text(
-                                                labels.share,
-                                                style: StyleText.fontSize13Weight600.copyWith(
-                                                  fontSize: 13.sp,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      _applyButton(labels, primary),
-                                    ],
-                                  ),
-                                  ),
-                                  SizedBox(height: 64.h),
+                                  SizedBox(height: isPhone ? 64.h : 20.w),
                                 ],
                               ),
                             ),
@@ -710,35 +550,54 @@ class _JobDetailPageState extends State<JobDetailPage> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _infoRow(String l1, String v1, String l2, String v2, Color primary) {
-    return Row(
-      children: [
-        if (l1.isNotEmpty) Expanded(child: _singleInfo(l1, v1, primary)),
-        if (l2.isNotEmpty) ...[
-          SizedBox(width: 16.w),
-          Expanded(child: _singleInfo(l2, v2, primary)),
+    // Phones: one value per line (nothing squeezed into half a row).
+    if (MediaQuery.sizeOf(context).width < 600) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (l1.isNotEmpty) _singleInfo(l1, v1, primary),
+          if (l2.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _singleInfo(l2, v2, primary),
+          ],
         ],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Figma: the second column starts 830 px into the 1300 px card body.
+        Expanded(
+            flex: 830,
+            child: l1.isNotEmpty ? _singleInfo(l1, v1, primary) : const SizedBox()),
+        Expanded(
+            flex: 470,
+            child: l2.isNotEmpty ? _singleInfo(l2, v2, primary) : const SizedBox()),
       ],
     );
   }
 
   Widget _singleInfo(String label, String value, Color primary) {
+    final bool phone = MediaQuery.sizeOf(context).width < 600;
     return RichText(
       text: TextSpan(
         children: [
           TextSpan(
             text: '$label ',
+            // Figma: label Medium 24 grey, value SemiBold 24 primary.
             style: StyleText.fontSize14Weight500.copyWith(
-
-              fontSize: 14.sp,
+              fontSize: phone ? 14 : 24.sp,
+              height: phone ? 20 / 14 : 1.4,
               fontWeight: FontWeight.w500,
-              color: Colors.black87,
+              color: SiteColors.description,
             ),
           ),
+          // BUG-195: admin text exactly as typed (no forced Title Case).
           TextSpan(
-            text: FormatHelper.capitalize(value),
+            text: value,
             style: StyleText.fontSize14Weight600.copyWith(
-
-              fontSize: 14.sp,
+              fontSize: phone ? 14 : 24.sp,
+              height: phone ? 20 / 14 : 1.4,
               fontWeight: FontWeight.w600,
               color: primary,
             ),
@@ -748,48 +607,120 @@ class _JobDetailPageState extends State<JobDetailPage> {
     );
   }
 
-  Widget _textSection(String title, String content, Color primary) {
-    final lines = content
-        .split('\n')
-        .where((l) => l.trim().isNotEmpty)
-        .toList();
+  /// BUG-205 — Figma section: #F1F2ED box (radius 15) inside the white card,
+  /// heading Cairo Bold primary, body as a bullet list.
+  Widget _sectionBox({required String title, required Color primary, required List<Widget> children}) {
+    final bool phone = MediaQuery.sizeOf(context).width < 600;
     return Container(
       width: double.infinity,
-      margin: EdgeInsets.only(bottom: 20.h),
-      padding: EdgeInsets.all(_cardPad),
+      // Figma: #F1F2ED box, radius 15, padding 25, 25 px apart; heading
+      // Cairo Bold 32 primary, 15 px above the list.
+      margin: EdgeInsets.only(bottom: phone ? 20.h : 25.w),
+      padding: EdgeInsets.all(phone ? 15 : 25.w),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12.r),
+        color: SiteColors.page,
+        borderRadius: BorderRadius.circular(15),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: StyleText.fontSize14Weight400.copyWith(
-
-              fontSize: 18.sp,
-              fontWeight: FontWeight.w700,
-              color: primary,
-            ),
-          ),
-          SizedBox(height: 12.h),
-          ...lines.map(
-                (line) => Padding(
-              padding: EdgeInsets.only(bottom: 6.h),
-              child: Text(
-                line.trim(),
-                style: StyleText.fontSize14Weight400.copyWith(
-
-                  fontSize: 13.sp,
-                  height: 1.6,
-                  color: Colors.black54,
-                ),
-              ),
-            ),
-          ),
+          Text(title, style: SiteText.sectionTitle(context, color: primary)),
+          SizedBox(height: phone ? 12.h : 15.w),
+          ...children,
         ],
       ),
+    );
+  }
+
+  /// BUG-226: one bullet row = bullet + Expanded text, so wrapped lines
+  /// align with the first word (hanging indent); body colour/size token.
+  Widget _bullet(String text) {
+    final bool phone = MediaQuery.sizeOf(context).width < 600;
+    // Figma: Cairo Medium 20, line height 30, grey.
+    final TextStyle style = StyleText.fontSize14Weight400.copyWith(
+      fontSize: phone ? 14 : 20.sp,
+      fontWeight: FontWeight.w500,
+      height: phone ? 1.6 : 1.5,
+      color: SiteColors.description,
+    );
+    return Padding(
+      padding: EdgeInsets.only(bottom: phone ? 6.h : 0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('•  ', style: style),
+          Expanded(child: Text(text, style: style)),
+        ],
+      ),
+    );
+  }
+
+  Widget _textSection(String title, String content, Color primary) {
+    final lines = content
+        .split('\n')
+        .map((l) => l.trim().replaceFirst(RegExp(r'^[•\-\*]\s*'), ''))
+        .where((l) => l.isNotEmpty)
+        .toList();
+    return _sectionBox(
+      title: title,
+      primary: primary,
+      children: [for (final line in lines) _bullet(line)],
+    );
+  }
+
+  /// BUG-220: on phones each benefit stacks (title, then the full-width
+  /// description) instead of a 120 px right column.
+  Widget _benefitsSection(_Labels labels, List<dynamic> benefits, Color primary,
+      bool isRtl, bool isPhone) {
+    // Figma benefits: title SemiBold 24/150 % #2D2D2D in a 450 px column,
+    // description Regular 20/150 % grey; 25 px around each row.
+    final TextStyle titleStyle = StyleText.fontSize14Weight600.copyWith(
+      fontSize: isPhone ? 16 : 24.sp,
+      height: isPhone ? null : 1.5,
+      fontWeight: isPhone ? FontWeight.w700 : FontWeight.w600,
+      color: SiteColors.textStrong,
+    );
+    final TextStyle descStyle = StyleText.fontSize14Weight400.copyWith(
+      fontSize: isPhone ? 15 : 20.sp,
+      fontWeight: isPhone ? FontWeight.w500 : FontWeight.w400,
+      height: isPhone ? 1.6 : 1.5,
+      color: SiteColors.description,
+    );
+    return _sectionBox(
+      title: labels.benefits,
+      primary: primary,
+      children: [
+        for (final b in benefits)
+          Builder(builder: (context) {
+            final bMap = b as Map<String, dynamic>;
+            final bTitle = _biText(bMap['title'] as Map<String, dynamic>?, isRtl);
+            final bDesc =
+                _biText(bMap['shortDescription'] as Map<String, dynamic>?, isRtl);
+            return Padding(
+              padding: isPhone
+                  ? EdgeInsets.only(bottom: 14.h)
+                  : EdgeInsets.symmetric(horizontal: 25.w, vertical: 25.w),
+              child: isPhone
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(bTitle, style: titleStyle),
+                        if (bDesc.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(bDesc, style: descStyle),
+                        ],
+                      ],
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(width: 450.w, child: Text(bTitle, style: titleStyle)),
+                        Expanded(child: Text(bDesc, style: descStyle)),
+                      ],
+                    ),
+            );
+          }),
+      ],
     );
   }
 }

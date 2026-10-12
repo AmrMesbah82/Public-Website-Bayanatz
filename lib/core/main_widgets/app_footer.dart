@@ -22,16 +22,46 @@ import '../../features/home/presentation/controller/lang_state.dart';
 import '../theme/app_wight.dart';
 import '../theme/appcolors.dart';
 import '../theme/new_theme.dart';
+import '../responsive/site_layout.dart';
 
 
 
 class _BP {
-  static const double mobile = 768;
+  static const double mobile = 600; // BUG-162: same breakpoints as every page
   static const double tablet = 1024;
 }
 
 const Color _kFallbackPrimary    = Color(0xFF008037);
-const Color _kFallbackFooterBg   = Color(0xFFF5F5F5); // fallback if headerFooterColor is empty
+// BUG-167: Figma footer is a WHITE card (#F5F5F5 grey was the fallback).
+const Color _kFallbackFooterBg   = Color(0xFFFFFFFF); // fallback if headerFooterColor is empty
+
+// BUG-143: one name per page everywhere. Footer labels are CMS text, so a
+// label that points at a known page always shows that page's canonical name
+// (the same one the page tab and the admin use).
+const Map<String, BiText> _kCanonicalNames = {
+  '/careers?tab=why-join-our-team': BiText(en: 'Why Join Our Team', ar: 'لماذا تنضم إلى فريقنا'),
+  '/careers?tab=our-team':          BiText(en: 'Our Team',          ar: 'فريقنا'),
+  '/careers?tab=interns':           BiText(en: 'Our Interns',       ar: 'المتدربون'),
+  '/about?tab=terms-and-conditions':BiText(en: 'Terms and Conditions', ar: 'الشروط والأحكام'),
+  '/about?tab=privacy-policy':      BiText(en: 'Privacy Policy',    ar: 'سياسة الخصوصية'),
+  '/about?tab=our-strategy':        BiText(en: 'Our Strategy',      ar: 'استراتيجيتنا'),
+};
+
+String _normFooterRoute(String r) {
+  var s = r.trim().toLowerCase();
+  if (s.length > 1 && s.endsWith('/')) s = s.substring(0, s.length - 1);
+  return s;
+}
+
+bool _isLegalRoute(String r) {
+  final s = _normFooterRoute(r);
+  return s.contains('terms') || s.contains('privacy');
+}
+
+FooterLabelModel _canonicalLabel(FooterLabelModel l) {
+  final canon = _kCanonicalNames[_normFooterRoute(l.route)];
+  return canon == null ? l : l.copyWith(label: canon);
+}
 
 List<FooterColumnModel> _syncedFooterColumns(HomePageModel model) {
   // Footer column titles/visibility follow the MAIN navbar items
@@ -41,16 +71,73 @@ List<FooterColumnModel> _syncedFooterColumns(HomePageModel model) {
       if (btn.route.isNotEmpty) btn.route: btn,
   };
   final List<FooterColumnModel> result = [];
+  final List<FooterLabelModel> legal = [];
   for (final col in model.footerColumns) {
     final nav = col.route.isNotEmpty ? navByRoute[col.route] : null;
-    if (nav != null) {
-      if (!nav.status) continue;
-      result.add(col.copyWith(title: nav.name));
-    } else {
-      result.add(col);
+    if (nav != null && !nav.status) continue;
+    // BUG-167: Terms / Privacy get their own group (Figma "Terms") instead
+    // of being listed under About Us.
+    final keep = <FooterLabelModel>[];
+    for (final l in col.labels) {
+      if (_isLegalRoute(l.route)) {
+        legal.add(_canonicalLabel(l));
+      } else {
+        keep.add(_canonicalLabel(l));
+      }
     }
+    if (_isLegalRoute(col.route)) {
+      legal.insertAll(0, keep);
+      continue;
+    }
+    result.add(col.copyWith(
+      title:  nav?.name ?? col.title,
+      labels: keep,
+    ));
   }
-  return result;
+
+  // BUG-167: Figma footer = Services · About Us · Terms · Contact Us · Careers.
+  final bool hasServices =
+      result.any((c) => _normFooterRoute(c.route) == '/services');
+  final servicesNav = navByRoute['/services'];
+  if (!hasServices && (servicesNav == null || servicesNav.status)) {
+    result.add(FooterColumnModel(
+      id:    'footer_services',
+      route: '/services',
+      title: servicesNav?.name ?? const BiText(en: 'Services', ar: 'الخدمات'),
+    ));
+  }
+  if (legal.isEmpty) {
+    legal.addAll(const [
+      FooterLabelModel(
+        id: 'footer_terms', route: '/about?tab=terms-and-conditions',
+        label: BiText(en: 'Terms and Conditions', ar: 'الشروط والأحكام')),
+      FooterLabelModel(
+        id: 'footer_privacy', route: '/about?tab=privacy-policy',
+        label: BiText(en: 'Privacy Policy', ar: 'سياسة الخصوصية')),
+    ]);
+  }
+  result.add(FooterColumnModel(
+    id:     'footer_terms_group',
+    route:  '/about?tab=terms-and-conditions',
+    title:  const BiText(en: 'Terms and Conditions', ar: 'الشروط والأحكام'),
+    labels: legal,
+  ));
+
+  int rank(FooterColumnModel c) {
+    final r = _normFooterRoute(c.route);
+    if (r.startsWith('/services')) return 0;
+    if (_isLegalRoute(r)) return 2;
+    if (r.startsWith('/about')) return 1;
+    if (r.startsWith('/contact')) return 3;
+    if (r.startsWith('/careers') || r.startsWith('/jobs')) return 4;
+    return 5;
+  }
+  final indexed = result.asMap().entries.toList()
+    ..sort((x, y) {
+      final d = rank(x.value) - rank(y.value);
+      return d != 0 ? d : x.key - y.key;
+    });
+  return [for (final e in indexed) e.value];
 }
 
 String _bi(BiText b, bool isRtl) {
@@ -147,74 +234,99 @@ class _FooterDesktop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double contentW = (248.w * 4) + (8.w * 3);
-    final double hPad =
-    ((MediaQuery.of(context).size.width - contentW) / 2)
-        .clamp(16.0, double.infinity);
+    // Figma (BAYANATZ WEB › footer): white card 1440×287 (20 px wider than
+    // the 1400 content column on each side), top corners 32. Logo 74×74 at
+    // (30, 30); the five link columns span x 150 → 1295 with equal gaps;
+    // a 1 px primary line at y 183 (x 145 → 1295); social icons 40×40
+    // centred under it, copyright Regular 18 ending 50 px from the edge.
+    final double cardW = SiteLayout.contentWidth(context) + 40.w;
 
-    return Container(
-      padding: EdgeInsets.all(22.sp),
-      decoration: BoxDecoration(
-        color: footerBg, // ✅ CMS-driven color
-        borderRadius: BorderRadiusDirectional.only(
-          topStart: Radius.circular(24.r),
-          topEnd:   Radius.circular(24.r),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _LogoBox(logoUrl: model.branding.logoUrl, primary: primary, size: 50.sp),
-              SizedBox(width: 32.w),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: columns
-                      .map((col) => _FooterColumnWidget(
-                    column:     col,
-                    titleColor: AppColors.text,
-                    primary:    primary,
-                    isRtl:      isRtl,
-                  ))
-                      .toList(),
-                ),
-              ),
-            ],
+    return Padding(
+      padding: EdgeInsets.only(top: 40.w),
+      child: Center(
+        child: Container(
+          width: cardW,
+          padding: EdgeInsetsDirectional.only(top: 30.w, bottom: 40.w),
+          decoration: BoxDecoration(
+            color: footerBg, // CMS "Header and Footer" colour (white default)
+            borderRadius: BorderRadiusDirectional.only(
+              topStart: Radius.circular(32.r),
+              topEnd:   Radius.circular(32.r),
+            ),
           ),
-          SizedBox(height: 24.h),
-          Divider(color: primary, thickness: 0.5),
-          SizedBox(height: 14.h),
-          // BUG-140: social icons centred on the PAGE (were ≈39 px left of
-          // centre — centred in the space left over by the copyright).
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: _socialIcons(model.socialLinks, primary),
-              ),
-              PositionedDirectional(
-                end: 0,
-                top: 0,
-                bottom: 0,
-                child: Center(
-                  child: Text(
-                    _staticCopyright(isRtl),
-                    style: StyleText.fontSize14Weight400.copyWith(
-                      color: AppColors.text,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 12.sp,
+          child: FocusTraversalGroup(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ConstrainedBox(
+                  // y 30 → 183 in Figma (logo 74, columns up to 99 tall).
+                  constraints: BoxConstraints(minHeight: 153.w),
+                  child: Padding(
+                    padding: EdgeInsetsDirectional.only(start: 30.w, end: 145.w),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _LogoBox(logoUrl: model.branding.logoUrl, primary: primary, size: 74),
+                        SizedBox(width: 46.w),
+                        Expanded(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              for (final col in columns)
+                                Flexible(
+                                  child: _FooterColumnWidget(
+                                    column:     col,
+                                    titleColor: const Color(0xFF2D2D2D),
+                                    primary:    primary,
+                                    isRtl:      isRtl,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ),
-            ],
+                Padding(
+                  padding: EdgeInsetsDirectional.only(start: 145.w, end: 145.w),
+                  child: Divider(color: primary, thickness: 1, height: 1),
+                ),
+                SizedBox(height: 24.w),
+                // BUG-166 / BUG-140: social icons centred on the card, the
+                // copyright at the end — separate slots, never overlapping.
+                Padding(
+                  padding: EdgeInsetsDirectional.only(end: 50.w),
+                  child: Row(
+                    children: [
+                      const Expanded(child: SizedBox()),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        // Figma gap 15 (each icon already has a 2 px focus margin).
+                        children: _socialIcons(model.socialLinks, primary, gap: 11),
+                      ),
+                      Expanded(
+                        child: Align(
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: Text(
+                            _staticCopyright(isRtl),
+                            textAlign: TextAlign.end,
+                            style: GoogleFonts.cairo(
+                              color:      const Color(0xFF2D2D2D),
+                              fontWeight: AppFontWeights.regular,
+                              fontSize:   18.sp,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -244,23 +356,23 @@ class _FooterTablet extends StatelessWidget {
     final row2     = columns.sublist(mid);
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      padding: EdgeInsets.symmetric(horizontal: 19.1.w),
       child: Container(
-        padding: EdgeInsets.all(20.sp),
+        padding: EdgeInsets.all(23.9.sp),
         decoration: BoxDecoration(
           color: footerBg, // ✅ CMS-driven color
           borderRadius: BorderRadiusDirectional.only(
-            topStart: Radius.circular(18.r),
-            topEnd:   Radius.circular(18.r),
+            topStart: Radius.circular(21.5.r),
+            topEnd:   Radius.circular(21.5.r),
           ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _LogoBox(logoUrl: model.branding.logoUrl, primary: primary, size: 32),
-            SizedBox(height: 18.h),
+            SizedBox(height: 21.5.h),
             Wrap(
-              spacing: 16.w, runSpacing: 16.h,
+              spacing: 19.1.w, runSpacing: 19.1.h,
               children: row1
                   .map((col) => _FooterColumnWidget(
                 column: col, titleColor: AppColors.text,
@@ -269,9 +381,9 @@ class _FooterTablet extends StatelessWidget {
                   .toList(),
             ),
             if (row2.isNotEmpty) ...[
-              SizedBox(height: 16.h),
+              SizedBox(height: 19.1.h),
               Wrap(
-                spacing: 16.w, runSpacing: 16.h,
+                spacing: 19.1.w, runSpacing: 19.1.h,
                 children: row2
                     .map((col) => _FooterColumnWidget(
                   column: col, titleColor: AppColors.text,
@@ -280,9 +392,9 @@ class _FooterTablet extends StatelessWidget {
                     .toList(),
               ),
             ],
-            SizedBox(height: 20.h),
+            SizedBox(height: 23.9.h),
             Divider(color: primary, thickness: 1),
-            SizedBox(height: 12.h),
+            SizedBox(height: 14.3.h),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -292,9 +404,9 @@ class _FooterTablet extends StatelessWidget {
                     _staticCopyright(isRtl),
                     textAlign: TextAlign.end,
                     style: GoogleFonts.cairo(
-                      fontSize:   10.sp,
+                      fontSize:   15.5.sp,
                       fontWeight: FontWeight.w400,
-                      color:      AppColors.secondaryText,
+                      color:      AppColors.text,
                     ),
                   ),
                 ),
@@ -331,16 +443,18 @@ class _FooterMobile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // Figma (iPhone footer): lines either side of the 40 px icons
+          // (15 px apart), then "Terms and Conditions" and the copyright,
+          // both Cairo Medium 14 (dark / grey), centred.
           Row(
             children: [
               Expanded(child: Divider(color: primary.withOpacity(0.5), thickness: 1)),
-              SizedBox(width: 10.w),
+              const SizedBox(width: 12),
               ..._socialIconsRaw(model.socialLinks, primary),
-              SizedBox(width: 10.w),
               Expanded(child: Divider(color: primary.withOpacity(0.5), thickness: 1)),
             ],
           ),
-          SizedBox(height: 16.h),
+          const SizedBox(height: 11),
           // BUG-108: phones showed one random link ("Vision"). Figma (iPhone
           // view, Footer 7126:41848) has exactly one link under the social
           // icons: "Terms and Conditions" — so that is the one shown here.
@@ -365,14 +479,14 @@ class _FooterMobile extends StatelessWidget {
               child: _FooterLink(label: label, route: route, primary: primary),
             );
           }),
-          SizedBox(height: 12.h),
+          const SizedBox(height: 2),
           Text(
             _staticCopyright(isRtl),
             textAlign: TextAlign.center,
             style: GoogleFonts.cairo(
-              fontSize:   10.sp,
-              fontWeight: FontWeight.w400,
-              color:      AppColors.secondaryText,
+              fontSize:   14,
+              fontWeight: FontWeight.w500,
+              color:      const Color(0xFF666666), // Figma #797979 (AA)
             ),
           ),
         ],
@@ -406,31 +520,37 @@ class _FooterColumnWidgetState extends State<_FooterColumnWidget> {
   @override
   Widget build(BuildContext context) {
     final String title = _bi(widget.column.title, widget.isRtl);
+    final bool tappable = widget.column.route.isNotEmpty;
+    // BUG-167 — Figma: headings Cairo Bold 16 #2D2D2D.
+    final Widget heading = AnimatedDefaultTextStyle(
+      duration: const Duration(milliseconds: 180),
+      style: GoogleFonts.cairo(
+        fontSize:   16.sp,
+        height:     1.5, // Figma 16/24
+        fontWeight: FontWeight.w700,
+        color: _hovered ? widget.primary : widget.titleColor,
+      ),
+      child: Text(title),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        MouseRegion(
-          onEnter: (_) => setState(() => _hovered = true),
-          onExit:  (_) => setState(() => _hovered = false),
-          cursor: widget.column.route.isNotEmpty
-              ? SystemMouseCursors.click
-              : MouseCursor.defer,
-          child: GestureDetector(
-            onTap: widget.column.route.isNotEmpty
-                ? () => _navigateTo(context, widget.column.route)
-                : null,
-            child: AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 180),
-              style: GoogleFonts.cairo(
-                fontSize:   13.sp,
-                fontWeight: _hovered ? FontWeight.w900 : AppFontWeights.semiBold,
-                color: _hovered ? widget.primary : widget.titleColor,
-              ),
-              child: Text(title),
-            ),
-          ),
-        ),
-        SizedBox(height: 6.h),
+        // BUG-257: focusable with Tab, opens with Enter.
+        tappable
+            ? Semantics(
+                link: true,
+                child: InkWell(
+                  onTap: () => _navigateTo(context, widget.column.route),
+                  onHover: (v) => setState(() => _hovered = v),
+                  hoverColor: Colors.transparent,
+                  focusColor: widget.primary.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(4),
+                  child: heading,
+                ),
+              )
+            : heading,
+        SizedBox(height: 5.w),
         ...widget.column.labels.map((lbl) => _FooterLink(
           label:   _bi(lbl.label, widget.isRtl),
           route:   lbl.route.isNotEmpty ? lbl.route : widget.column.route,
@@ -481,19 +601,22 @@ class _FooterLinkState extends State<_FooterLink> {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit:  (_) => setState(() => _hovered = false),
-      cursor: widget.route != null ? SystemMouseCursors.click : MouseCursor.defer,
-      child: GestureDetector(
+    // BUG-167: links Cairo Regular 15 #2D2D2D. BUG-257: focusable (Tab).
+    return Semantics(
+      link: true,
+      child: InkWell(
         onTap: () => _handleTap(context),
+        onHover: (v) => setState(() => _hovered = v),
+        hoverColor: Colors.transparent,
+        focusColor: widget.primary.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(4),
         child: Text(
           widget.label,
           style: GoogleFonts.cairo(
-            fontSize:        12.sp,
+            fontSize:        15.sp,
             fontWeight:      AppFontWeights.regular,
-            height:          2.0,
-            color:           _hovered ? widget.primary : AppColors.secondaryBlack,
+            height:          25 / 15, // Figma 15/20 + 5 px between links
+            color:           _hovered ? widget.primary : const Color(0xFF2D2D2D),
             decoration:      _hovered ? TextDecoration.underline : null,
             decorationColor: widget.primary,
           ),
@@ -557,7 +680,7 @@ List<Widget> _socialIconsRaw(List<SocialLinkModel> links, Color borderColor) {
       .where((l) => l.visibility && (l.iconUrl.isNotEmpty || l.url.isNotEmpty))
       .expand((l) => [
     _SocialIconWidget(link: l, borderColor: borderColor, size: 32, raw: true),
-    SizedBox(width: 8.w),
+    const SizedBox(width: 11), // + 2 px focus margin each side ≈ Figma 15
   ])
       .toList();
 }
@@ -591,9 +714,10 @@ class _SocialIconWidget extends StatelessWidget {
     )
         : Icon(Icons.link, size: _ic, color: borderColor);
 
+    // BUG-166: Figma social icons are 40×40.
     final box = Container(
-      width:  40.w,
-      height: 40.w,
+      width:  raw ? 40 : 40.w,
+      height: raw ? 40 : 40.w,
       decoration: BoxDecoration(
         border:       Border.all(color: borderColor),
         borderRadius: BorderRadius.circular(raw ? 8 : 8.r),
@@ -601,34 +725,39 @@ class _SocialIconWidget extends StatelessWidget {
       child: Center(child: iconWidget),
     );
 
-    // BUG-138: icon-only buttons need a name for screen readers.
+    // BUG-138 / BUG-257: icon-only buttons need a name for screen readers
+    // and must be reachable with Tab.
     final String name = _socialName(link.url);
     return link.url.isNotEmpty
         ? Semantics(
-      button: true,
       link: true,
       label: name,
-      child: GestureDetector(
-      onTap: () async {
-        String rawUrl = link.url.trim();
-        if (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
-          rawUrl = 'https://$rawUrl';
-        }
+      excludeSemantics: true,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        focusColor: borderColor.withOpacity(0.15),
+        onTap: () async {
+          String rawUrl = link.url.trim();
+          if (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
+            rawUrl = 'https://$rawUrl';
+          }
 
-        final uri = Uri.tryParse(rawUrl);
-        if (uri == null || !uri.hasAuthority) return; // ✅ guard empty/invalid URLs
+          final uri = Uri.tryParse(rawUrl);
+          if (uri == null || !uri.hasAuthority) return; // ✅ guard empty/invalid URLs
 
-        final canLaunch = await canLaunchUrl(uri);
-        if (!canLaunch) return;
+          final canLaunch = await canLaunchUrl(uri);
+          if (!canLaunch) return;
 
-        await launchUrl(
-          uri,
-          mode: LaunchMode.externalApplication, // ✅ works reliably on web
-          webOnlyWindowName: '_blank',
-        );
-      },
-      child: MouseRegion(cursor: SystemMouseCursors.click, child: box),
-    ))
+          await launchUrl(
+            uri,
+            mode: LaunchMode.externalApplication, // ✅ works reliably on web
+            webOnlyWindowName: '_blank',
+          );
+        },
+        // BUG-257: 44×44 tap target around the 40×40 Figma icon.
+        child: Padding(padding: const EdgeInsets.all(2), child: box),
+      ),
+    )
         : box;
   }
 }

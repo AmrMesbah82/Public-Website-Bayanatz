@@ -29,53 +29,52 @@ class _BlogCardMobile extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
           color:        _kSurface,
-          borderRadius: BorderRadius.circular(12.r)),
+          borderRadius: BorderRadius.circular(15)),
+      // Figma (iPhone read card): radius 15, padding 10; image 96 px tall
+      // (radius 12); title SemiBold 20/150 % primary; text Medium 16 grey;
+      // date SemiBold 12; "Read More" 81×34.
       child: Padding(
-        padding: EdgeInsets.all(10.r),
+        padding: const EdgeInsets.all(10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(10.r),
+              borderRadius: BorderRadius.circular(12),
               child: SizedBox(
                 width:  double.infinity,
-                height: 80.h,
+                height: 96,
                 child: post.imageUrl.isNotEmpty
-                    ? SvgPicture.network(
+                    ? SmartNetworkImage( // BUG-251
                   post.imageUrl,
                   width:  double.infinity,
-                  height: 80.h,
-                  fit:    BoxFit.contain,
-                  placeholderBuilder: (_) => Container(
-                    color: _kGreenLight,
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 1.5,
-                        color:       primaryColor,
-                      ),
-                    ),
-                  ),
+                  height: 96,
+                  fit:    BoxFit.cover,
+                  fallback: Container(color: _kGreenLight),
                 )
                     : Container(color: _kGreenLight),
               ),
             ),
-            SizedBox(height: 12.h),
+            const SizedBox(height: 10),
             Text(_tb(post.question, isRtl),
                 style: StyleText.fontSize14Weight600.copyWith(
+                    fontSize: 20,
                     color:  primaryColor,
-                    height: 1.4)),
-            SizedBox(height: 8.h),
+                    height: 1.5)),
             Text(_tb(post.shortDescription, isRtl),
                 style: StyleText.fontSize10Weight400.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color:      AppColors.text,
-                    height:     1.4)),
-            SizedBox(height: 8.h),
+                    fontSize:   16,
+                    fontWeight: FontWeight.w500,
+                    color:      SiteColors.description,
+                    height:     1.5)),
+            const SizedBox(height: 5),
             Row(
               children: [
                 Text(dateStr,
                     style: StyleText.fontSize12Weight400.copyWith(
-                        color: AppColors.secondaryBlack)),
+                        fontSize:   12,
+                        fontWeight: FontWeight.w600,
+                        height:     1.5,
+                        color:      SiteColors.meta)),
                 const Spacer(),
                 _ReadMoreBtnMobile(
                   label:        isRtl ? 'اقرأ المزيد' : 'Read More',

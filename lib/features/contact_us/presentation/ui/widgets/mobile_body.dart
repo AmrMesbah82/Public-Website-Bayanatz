@@ -40,17 +40,16 @@ class _MobileBody extends StatelessWidget {
     final String officeTitle = _t(context, en: 'Office Locations', ar: 'مواقع المكاتب');
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: 20.h),
+          // Figma (iPhone): title 70 px under the header; info card 20 px
+          // below; form card 15 px lower; offices 20 px after the form.
+          const SizedBox(height: 60),
           Text(pageTitle,
-              style: StyleText.fontSize45Weight600.copyWith(
-                  fontSize:   26.sp,
-                  color:      primaryColor,
-                  fontWeight: FontWeight.w700)),
-          SizedBox(height: 16.h),
+              style: SiteText.pageTitle(context, color: primaryColor)), // BUG-178 / BUG-242
+          const SizedBox(height: 20),
           _Reveal(
             delay:     const Duration(milliseconds: 100),
             direction: _SlideDirection.fromLeft,
@@ -59,7 +58,7 @@ class _MobileBody extends StatelessWidget {
                 isRtl:        isRtl,
                 primaryColor: primaryColor),
           ),
-          SizedBox(height: 16.h),
+          const SizedBox(height: 15),
           _Reveal(
             delay:     const Duration(milliseconds: 150),
             direction: _SlideDirection.fromBottom,
@@ -90,29 +89,45 @@ class _MobileBody extends StatelessWidget {
               primaryColor:        primaryColor,
             ),
           ),
-          SizedBox(height: 24.h),
+          const SizedBox(height: 20),
           _Reveal(
             delay:     const Duration(milliseconds: 80),
             direction: _SlideDirection.fromLeft,
+            // Figma: "Office Locations" Cairo Bold 24 / 150 % primary.
             child: Text(officeTitle,
                 style: StyleText.fontSize22Weight700
-                    .copyWith(color: primaryColor, fontSize: 18.sp)),
+                    .copyWith(color: primaryColor, fontSize: 24, height: 1.5)),
           ),
-          SizedBox(height: 12.h),
+          const SizedBox(height: 8),
+          // Figma: one white container (radius 8, padding 25) holding the
+          // country cards 25 px apart.
           if (cmsData != null && cmsData!.officeLocations.isNotEmpty)
-            ...cmsData!.officeLocations.asMap().entries.map((e) =>
-                _Reveal(
-                  delay:     Duration(milliseconds: 100 + e.key * 80),
-                  direction: _SlideDirection.fromBottom,
-                  child: Padding(
-                    padding: EdgeInsets.only(bottom: 12.h),
-                    child: _OfficeCardMobile(
-                        office:       e.value,
-                        isRtl:        isRtl,
-                        primaryColor: primaryColor),
-                  ),
-                )),
-          SizedBox(height: 24.h),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(25),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  for (final e in cmsData!.officeLocations.asMap().entries)
+                    _Reveal(
+                      delay:     Duration(milliseconds: 100 + e.key * 80),
+                      direction: _SlideDirection.fromBottom,
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                            bottom: e.key == cmsData!.officeLocations.length - 1 ? 0 : 25),
+                        child: _OfficeCardMobile(
+                            office:       e.value,
+                            isRtl:        isRtl,
+                            primaryColor: primaryColor),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 24),
         ],
       ),
     );

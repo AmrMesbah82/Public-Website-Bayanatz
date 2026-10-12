@@ -27,7 +27,9 @@ class _ServicesBodyDesktopState extends State<_ServicesBodyDesktop> {
     final double contentW = _desktopContentWidth(context);
     final double hPad =
     ((screenW - contentW) / 2).clamp(16.0, double.infinity);
-    final double gap = 10.w;
+    // Figma: 15 px between service cards, 26 px between read cards.
+    final double gap = 15.w;
+    final double blogGap = 26.w;
 
     final String sectionTitle =
     _t(widget.model.journeyTitle, widget.isRtl).isNotEmpty
@@ -49,15 +51,18 @@ class _ServicesBodyDesktopState extends State<_ServicesBodyDesktop> {
       rows.add(visibleItems.skip(i).take(4).toList());
     }
 
-    // ✅ FIX: blog card width calculated for up to 5 posts using Wrap
-    final double blogCardW = (contentW - gap * 2) / 3;
+    // BUG-183: 3 per row; 4 reads → 2 × 2 (no lone 4th card).
+    final int blogsPerRow =
+        (widget.blogs.length % 3 == 1 && widget.blogs.length.isEven) ? 2 : 3;
+    final double blogCardW =
+        (contentW - blogGap * (blogsPerRow - 1)) / blogsPerRow;
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: hPad),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: 20.h),
+          SizedBox(height: 50.w),
 
           // ── Title row ──────────────────────────────────────────────────
           _Reveal(
@@ -69,11 +74,10 @@ class _ServicesBodyDesktopState extends State<_ServicesBodyDesktop> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
-                  child: Text(FormatHelper.capitalize(sectionTitle),
-                      style: StyleText.fontSize22Weight700.copyWith(
-                          fontSize:   30.sp,
-                          color:      widget.primaryColor,
-                          fontWeight: AppFontWeights.extraBold)),
+                  // Figma: Cairo SemiBold 36 primary, line height 150 %.
+                  child: Text(sectionTitle,
+                      style: SiteText.sectionTitle(context, color: widget.primaryColor)
+                          .copyWith(fontSize: 36.sp, fontWeight: FontWeight.w600, height: 1.5)),
                 ),
                 if (hasMore)
                   GestureDetector(
@@ -83,13 +87,13 @@ class _ServicesBodyDesktopState extends State<_ServicesBodyDesktop> {
                       cursor: SystemMouseCursors.click,
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 20.w, vertical: 8.h),
+                        // BUG-182: Figma "See All ↓" 90×32, radius 8.
+                        constraints: BoxConstraints(minHeight: 32.w, minWidth: 90.w),
+                        padding: EdgeInsets.symmetric(horizontal: 10.w),
+                        alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color:        widget.primaryColor,
-                          borderRadius: BorderRadius.circular(8.r),
-                          border: Border.all(
-                              color: widget.primaryColor, width: 1.5),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -97,10 +101,11 @@ class _ServicesBodyDesktopState extends State<_ServicesBodyDesktop> {
                             Text(
                               _showAll
                                   ? (widget.isRtl ? 'عرض أقل' : 'See Less')
-                                  : (widget.isRtl ? 'عرض المزيد' : 'See More'),
+                                  : (widget.isRtl ? 'عرض الكل' : 'See All'),
                               style: StyleText.fontSize13Weight600.copyWith(
-                                color:    Colors.white,
-                                fontSize: 13.sp,
+                                color:      Colors.white,
+                                fontSize:   16.sp, // Figma SemiBold 16
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                             SizedBox(width: 6.w),
@@ -108,9 +113,9 @@ class _ServicesBodyDesktopState extends State<_ServicesBodyDesktop> {
                               turns:    _showAll ? 0.5 : 0,
                               duration: const Duration(milliseconds: 200),
                               child: Icon(
-                                Icons.keyboard_arrow_down_rounded,
+                                Icons.arrow_downward_rounded,
                                 color: Colors.white,
-                                size:  18.sp,
+                                size:  16.w,
                               ),
                             ),
                           ],
@@ -121,7 +126,7 @@ class _ServicesBodyDesktopState extends State<_ServicesBodyDesktop> {
               ],
             ),
           ),
-          SizedBox(height: 16.h),
+          SizedBox(height: 10.w),
 
           // ── Service cards ──────────────────────────────────────────────
           widget.model.journeyItems.isEmpty
@@ -140,7 +145,6 @@ class _ServicesBodyDesktopState extends State<_ServicesBodyDesktop> {
                         ? 'لم تتم إضافة خدمات بعد.'
                         : 'No services added yet.',
                     style: StyleText.fontSize14Weight400.copyWith(
-                        fontFamily: 'Cairo',
                         fontSize:   12.sp,
                         // BUG-17: was the divider colour — nearly invisible.
                         color:      const Color(0xFF6B6B6B))),
@@ -194,7 +198,7 @@ class _ServicesBodyDesktopState extends State<_ServicesBodyDesktop> {
               }).toList(),
             ),
           ),
-          SizedBox(height: 36.h),
+          SizedBox(height: 50.w),
 
           // ── Blog section title ─────────────────────────────────────────
           _Reveal(
@@ -202,12 +206,10 @@ class _ServicesBodyDesktopState extends State<_ServicesBodyDesktop> {
             direction: _SlideDirection.fromLeft,
             duration:  const Duration(milliseconds: 650),
             child: Text(importantReads,
-                style: StyleText.fontSize22Weight700.copyWith(
-                    fontSize:   30.sp,
-                    color:      widget.primaryColor,
-                    fontWeight: AppFontWeights.extraBold)),
+                style: SiteText.sectionTitle(context, color: widget.primaryColor)
+                    .copyWith(fontSize: 36.sp, fontWeight: FontWeight.w600, height: 1.5)),
           ),
-          SizedBox(height: 14.h),
+          SizedBox(height: 8.w),
 
           // BUG-139: cards in one row now share the SAME height (rows of 3,
           // IntrinsicHeight + stretch) and the date / "Read More" footer sits
@@ -217,16 +219,16 @@ class _ServicesBodyDesktopState extends State<_ServicesBodyDesktop> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (int start = 0; start < widget.blogs.length; start += 3) ...[
-                  if (start > 0) SizedBox(height: gap),
+                for (int start = 0; start < widget.blogs.length; start += blogsPerRow) ...[
+                  if (start > 0) SizedBox(height: blogGap),
                   IntrinsicHeight(
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         for (int i = start;
-                            i < start + 3 && i < widget.blogs.length;
+                            i < start + blogsPerRow && i < widget.blogs.length;
                             i++) ...[
-                          if (i > start) SizedBox(width: gap),
+                          if (i > start) SizedBox(width: blogGap),
                           _Reveal(
                             delay:     Duration(milliseconds: 100 + i * 120),
                             direction: i == 0
@@ -240,7 +242,8 @@ class _ServicesBodyDesktopState extends State<_ServicesBodyDesktop> {
                               child: _BlogCardDesktop(
                                   post:         widget.blogs[i],
                                   isRtl:        widget.isRtl,
-                                  primaryColor: widget.primaryColor),
+                                  primaryColor: widget.primaryColor,
+                                  width:        blogCardW),
                             ),
                           ),
                         ],
@@ -250,7 +253,6 @@ class _ServicesBodyDesktopState extends State<_ServicesBodyDesktop> {
                 ],
               ],
             ),
-          SizedBox(height: 36.h),
         ],
       ),
     );

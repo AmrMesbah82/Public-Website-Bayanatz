@@ -8,7 +8,8 @@ class _FormLabel extends StatelessWidget {
   Widget build(BuildContext context) => custom.requiredLabel(
     label,
     required: required,
-    style: StyleText.fontSize14Weight400
-        .copyWith(color: AppColors.text, fontSize: 14.sp),
+    // BUG-186: Figma labels 16 SemiBold #2D2D2D.
+    style: StyleText.fontSize14Weight400.copyWith(
+        color: SiteColors.textStrong, fontSize: 16.sp, fontWeight: FontWeight.w600),
   );
 }

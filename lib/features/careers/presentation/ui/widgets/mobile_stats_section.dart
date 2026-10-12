@@ -14,35 +14,39 @@ class _MobileStatsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     if (statistics.isEmpty) return const SizedBox.shrink();
     return Container(
+      // Figma (iPhone): white card radius 15, padding 20, 10 px between
+      // items; value Playfair Display ExtraBold 32 primary, text Cairo
+      // SemiBold 14 / 23 grey.
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(8.r),
+        borderRadius: BorderRadius.circular(15),
       ),
-      padding: EdgeInsets.only(top: 16.sp, right: 16.sp,left: 16.sp),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: statistics
             .map(
               (s) => Padding(
-            padding: EdgeInsets.only(bottom: 14.h),
+            padding: const EdgeInsets.only(bottom: 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   isRtl ? s.title.ar : s.title.en,
-                  style: StyleText.fontSize28Weight600.copyWith(
-                    fontSize: 24.sp,
-                    fontWeight: FontWeight.w700,
+                  style: (isRtl ? GoogleFonts.cairo : GoogleFonts.playfairDisplay)(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
                     color: primary,
                   ),
                 ),
-                SizedBox(height: 3.h),
+                const SizedBox(height: 8),
                 Text(
                   isRtl ? s.shortDescription.ar : s.shortDescription.en,
                   style: StyleText.fontSize13Weight400.copyWith(
-                    fontSize: 13.sp,
-                    height: 1.5,
-                    color: Colors.black54,
+                    fontSize: 14,
+                    height: 23 / 14,
+                    fontWeight: FontWeight.w600,
+                    color: SiteColors.description,
                   ),
                 ),
               ],

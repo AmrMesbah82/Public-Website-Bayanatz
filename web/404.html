@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Page not found — Bayanatz</title>
+  <link rel="icon" type="image/png" href="/favicon-48.png">
+  <style>
+    body { margin: 0; min-height: 100vh; display: flex; align-items: center;
+      justify-content: center; background: #F1F2ED; color: #2D2D2D;
+      font-family: Cairo, system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { background: #fff; border-radius: 15px; padding: 40px 32px;
+      max-width: 520px; margin: 16px; text-align: center; }
+    img { width: 72px; height: 72px; }
+    h1 { color: #008037; font-size: 28px; margin: 16px 0 8px; }
+    p { color: #666; line-height: 1.6; margin: 0 0 8px; }
+    a { display: inline-block; margin-top: 16px; background: #008037; color: #fff;
+      text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <!-- BUG-254: unknown addresses answer with a real HTTP 404 (Firebase serves
+       this file) instead of the app with status 200 (soft 404). -->
+  <main>
+    <img src="/apple-touch-icon.png" alt="Bayanatz">
+    <h1>Page not found</h1>
+    <p>The page you are looking for doesn't exist or has moved.</p>
+    <p dir="rtl">الصفحة التي تبحث عنها غير موجودة أو تم نقلها.</p>
+    <a href="/">Back to home · العودة للرئيسية</a>
+  </main>
+</body>
+</html>

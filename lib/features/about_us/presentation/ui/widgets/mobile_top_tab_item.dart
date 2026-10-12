@@ -26,55 +26,72 @@ class _MobileTopTabItem extends StatefulWidget {
 }
 
 class _MobileTopTabItemState extends State<_MobileTopTabItem> {
-  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
     final bool sel = widget.isSelected;
-    final Color hoverBg = _hoverTint(widget.primaryColor);
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
+    // BUG-246: tab labels use the TAB token (15 px), not the page-title size;
+    // BUG-214: light inactive tile; BUG-184: 2 px underline when active.
+    return Semantics(
+      button: true,
+      selected: sel,
+      label: widget.label,
+      excludeSemantics: true,
+      child: InkWell(
         onTap: widget.onTap,
+        // QA-Oct11 #13: no hover tint on the tabs.
+        hoverColor: Colors.transparent,
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          margin: EdgeInsets.only(right: 8.w),
-          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           decoration: BoxDecoration(
-            color: sel ? Colors.transparent : (_hovered ? hoverBg : Colors.transparent),
-            borderRadius: BorderRadius.circular(8.r),
-
+            border: Border(
+              bottom: BorderSide(
+                color: sel ? widget.primaryColor : Colors.transparent,
+                width: 2,
+              ),
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                width: 48.sp,
-                height: 48.sp,
+                // Figma (iPhone): 48 px tile, radius 14 — primary when active,
+                // 10 % #71717A otherwise.
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
-                  color: sel ? widget.primaryColor : widget.secondaryColor,
-                  borderRadius: BorderRadius.circular(8.r),
+                  // QA-Oct11 #3: unselected = selected tile at 50 %.
+                  color: sel
+                      ? widget.primaryColor
+                      : widget.primaryColor.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: Center(
                   child: _topTabIcon(
                     iconUrl: widget.iconUrl,
                     fallback: _kTopTabFallbackIcons[
                         widget.index.clamp(0, _kTopTabFallbackIcons.length - 1)],
-                    color: sel ? Colors.white : widget.primaryColor,
-                    size: 26.sp,
+                    color: Colors.white,
+                    size: 26,
                   ),
                 ),
               ),
-              SizedBox(width: 6.w),
+              const SizedBox(width: 15),
+              // Figma: SemiBold 20 (#170F49 active); 16 here so the four
+              // tabs still wrap on a phone (BUG-246).
               Text(
                 widget.label,
                 style: StyleText.fontSize20Weight600.copyWith(
+                  fontSize: 16,
+                  height: 22 / 16,
                   color: sel
-                      ? widget.primaryColor
-                      : (_hovered ? widget.primaryColor : AppColors.secondaryBlack),
+                      ? const Color(0xFF170F49)
+                      : SiteColors.description,
                 ),
               ),
             ],

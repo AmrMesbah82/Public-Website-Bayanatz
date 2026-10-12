@@ -16,14 +16,19 @@ class _DesktopInternCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double avatarSz = isTablet ? 70.w : 84.w;
-    final double leftColW = isTablet ? 110.w : 130.w;
-    final double nameFz = isTablet ? 11.sp : 13.sp;
-    final double degFz = isTablet ? 9.sp : 10.sp;
-    final double joinFz = isTablet ? 9.sp : 10.sp;
-    final double titleFz = isTablet ? 12.sp : 14.sp;
-    final double bodyFz = isTablet ? 10.sp : 12.sp;
-    final double cardPad = isTablet ? 14.w : 18.w;
+    // Figma intern card (450×216, radius 24, padding 15): 80 px photo,
+    // name SemiBold 20/28, degree SemiBold 14/28 (grey), position chip
+    // SemiBold 16 white on primary (radius 8); right column at x 214:
+    // joined date SemiBold 14, "What Have I Learned" SemiBold 16 black,
+    // text SemiBold 14/22 grey.
+    final double avatarSz = isTablet ? 70.w : 80.w;
+    final double leftColW = isTablet ? 110.w : 172.w;
+    final double nameFz = isTablet ? 11.sp : 20.sp;
+    final double degFz = isTablet ? 9.sp : 14.sp;
+    final double joinFz = isTablet ? 9.sp : 14.sp;
+    final double titleFz = isTablet ? 12.sp : 16.sp;
+    final double bodyFz = isTablet ? 10.sp : 14.sp;
+    final double cardPad = isTablet ? 14.w : 15.w;
 
     return SizedBox(
       width: width,
@@ -31,7 +36,7 @@ class _DesktopInternCard extends StatelessWidget {
         padding: EdgeInsets.all(cardPad),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(14.r),
+          borderRadius: BorderRadius.circular(isTablet ? 14.r : 24.r),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,8 +51,9 @@ class _DesktopInternCard extends StatelessWidget {
                     height: avatarSz,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border:
-                      Border.all(color: primary, width: 1.5),
+                      border: isTablet
+                          ? Border.all(color: primary, width: 1.5)
+                          : null,
                     ),
                     child: ClipOval(
                       child: data.photoUrl.isNotEmpty
@@ -72,7 +78,9 @@ class _DesktopInternCard extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: StyleText.fontSize14Weight700.copyWith(
                       fontSize: nameFz,
-                      color: Colors.black87,
+                      height: isTablet ? null : 1.4,
+                      fontWeight: isTablet ? null : FontWeight.w600,
+                      color: isTablet ? Colors.black87 : SiteColors.description,
                     ),
                   ),
                   SizedBox(height: 3.h),
@@ -81,26 +89,29 @@ class _DesktopInternCard extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: StyleText.fontSize11Weight600.copyWith(
                       fontSize: degFz,
-                      color: const Color(0xFF797979) /* Figma grey */,
-                      height: 1.4,
+                      color: const Color(0xFF666666) /* Figma grey */,
+                      height: isTablet ? 1.4 : 2.0,
                     ),
                   ),
                   // ── Position ─────────────────────────────────────────
                   if (data.positionFor(isRtl).isNotEmpty) ...[
                     SizedBox(height: 6.h),
                     Container(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 10.w, vertical: 5.h),
+                      padding: isTablet
+                          ? EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h)
+                          : EdgeInsets.symmetric(horizontal: 15.w, vertical: 5.5.w),
                       decoration: BoxDecoration(
                         color: primary,
-                        borderRadius: BorderRadius.circular(6.r),
+                        borderRadius: BorderRadius.circular(isTablet ? 6.r : 8.r),
                       ),
                       child: Text(
                         data.positionFor(isRtl),
                         textAlign: TextAlign.center,
                         style: StyleText.fontSize13Weight600.copyWith(
                           color: Colors.white,
-                          fontWeight: FontWeight.w400,
+                          fontSize: isTablet ? null : 16.sp,
+                          height: isTablet ? null : 1.5,
+                          fontWeight: isTablet ? FontWeight.w400 : FontWeight.w600,
                         ),
                       ),
                     ),
@@ -138,7 +149,7 @@ class _DesktopInternCard extends StatelessWidget {
                 ],
               ),
             ),
-            SizedBox(width: 14.w),
+            SizedBox(width: isTablet ? 14.w : 27.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,7 +161,7 @@ class _DesktopInternCard extends StatelessWidget {
                         _t('Joined as Intern: ', 'انضم كمتدرب: ', isRtl),
                         style: StyleText.fontSize12Weight600.copyWith(
                           fontSize: joinFz,
-                          color: AppColors.secondaryText,
+                          color: isTablet ? AppColors.secondaryText : SiteColors.description,
                         ),
                       ),
 
@@ -158,26 +169,28 @@ class _DesktopInternCard extends StatelessWidget {
                         data.joinDateLabelFor(isRtl),
                         style: StyleText.fontSize11Weight600.copyWith(
                           fontSize: joinFz,
-                          color: AppColors.text,
+                          color: isTablet ? AppColors.text : SiteColors.description,
                         ),
                       ),
                     ],
                   ),
-                  SizedBox(height: 10.h),
+                  SizedBox(height: isTablet ? 10.h : 37.w),
                   Text(
                     _t('What Have I Learned', 'ماذا تعلمت', isRtl),
                     style: StyleText.fontSize16Weight700.copyWith(
                       fontSize: titleFz,
-                      color: Colors.black87,
+                      fontWeight: isTablet ? null : FontWeight.w600,
+                      height: isTablet ? null : 1.75,
+                      color: isTablet ? Colors.black87 : Colors.black,
                     ),
                   ),
-                  SizedBox(height: 6.h),
+                  SizedBox(height: isTablet ? 6.h : 5.w),
                   Text(
                     data.whatHaveILearnedFor(isRtl),
                     style: StyleText.fontSize14Weight600.copyWith(
                       fontSize: bodyFz,
-                      height: 1.6,
-                      color: Colors.black54,
+                      height: isTablet ? 1.6 : 22 / 14,
+                      color: isTablet ? Colors.black54 : SiteColors.description,
                     ),
                   ),
                 ],

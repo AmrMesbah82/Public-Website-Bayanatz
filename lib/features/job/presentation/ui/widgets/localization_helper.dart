@@ -5,7 +5,7 @@ class _L {
   const _L(this.isAr);
 
   String get heroTitle        => isAr ? 'أطلق إمكاناتك في العالم الرقمي'               : 'Unlock Your Potential in the Digital World';
-  String get sectionTitle     => isAr ? 'الوظائف المتاحة في بياناتز'                   : 'Job Listings at Bayanatz';
+  String get sectionTitle     => isAr ? 'الوظائف المتاحة في بيانات زي'                 : 'Job Listings at Bayanatz';
   String get allLabel         => isAr ? 'الكل'                                         : 'All';
   String get noJobsAll        => isAr ? 'لا توجد وظائف متاحة حالياً.'                  : 'No open positions right now.';
   String get checkBackSoon    => isAr ? 'تابعنا قريباً، أو تواصل معنا لأي استفسار.'      : 'Check back soon — or get in touch with us.';
@@ -14,7 +14,8 @@ class _L {
   String get errorMsg         => isAr ? 'فشل تحميل الوظائف. يتم عرض البيانات المحفوظة.' : 'Failed to load jobs. Showing cached data.';
   String get retry            => isAr ? 'إعادة المحاولة'                               : 'Retry';
   String get linkCopied       => isAr ? 'تم نسخ الرابط!'                              : 'Link Copied!';
-  String get hireDate         => isAr ? 'تاريخ التعيين المتوقع'                        : 'Expected Hire Date';
+  // BUG-202 / BUG-201: same wording as the Job page, Apply page and Figma.
+  String get hireDate         => isAr ? 'تاريخ التوظيف'                               : 'Hire Date';
   String get hireEndDate      => isAr ? 'تاريخ انتهاء التوظيف'                        : 'Hire End Date';
   String get workType         => isAr ? 'نوع العمل'                                   : 'Work Type';
   String get employmentDuration => isAr ? 'مدة التوظيف'                              : 'Employment Duration';
@@ -26,7 +27,7 @@ class _L {
   String get qualification    => isAr ? 'المؤهل المطلوب'                              : 'Required Qualification';
   String get skillsLabel      => isAr ? 'المهارات:'                                   : 'Skills:';
   String get locationLabel    => isAr ? 'القاهرة، مصر'                                : 'Cairo, Egypt';
-  String get viewJob          => isAr ? 'عرض الوظيفة'                                : 'VIEW JOB';
+  String get viewJob          => isAr ? 'عرض الوظيفة'                                : 'View Job'; // BUG-146
   String get untitled         => isAr ? 'بدون عنوان'                                 : 'Untitled';
   TextDirection get dir       => isAr ? TextDirection.rtl : TextDirection.ltr;
 }

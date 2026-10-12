@@ -8,6 +8,7 @@
 /// Created by: Amr Mesbah
 
 import 'package:flutter/material.dart';
+import '../theme/site_tokens.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -56,7 +57,7 @@ class CustomValidatedTextFieldMaster extends StatefulWidget {
     this.label,
     required this.hint,
     required this.controller,
-    this.height = 36,
+    this.height = 38, // BUG-165: one field height (text = dropdown = phone)
     this.width,
     this.maxLines = 1,
     this.enabled = true,
@@ -149,17 +150,17 @@ class _CustomValidatedTextFieldMasterState
     final Color resolvedFill = widget.fillColor ??
         (lightMode ? const Color(0xFFF1F2ED) : AppColors.background);
 
+    // Every field: 10.sp inner padding (SiteField).
     final EdgeInsetsGeometry contentPadding = isMultiline
-        ? EdgeInsets.symmetric(vertical: 12.h, horizontal: 8.w)
-        : EdgeInsets.symmetric(
-            vertical: (widget.height - 20).h / 2,
-            horizontal: 8.w,
-          );
+        ? EdgeInsets.all(SiteField.padding)
+        : EdgeInsets.symmetric(horizontal: SiteField.padding);
 
     final field = custom.CustomTextField(
       controller: widget.controller,
+
       hint: widget.hint,
       label: null,
+      semanticsLabel: widget.label,
       enabled: widget.enabled,
       maxLines: widget.maxLines,
       maxLength: widget.maxLength,
@@ -172,15 +173,16 @@ class _CustomValidatedTextFieldMasterState
           widget.onlyDigits ? TextInputType.number : TextInputType.text,
       onChanged: widget.onChanged,
       fillColor: resolvedFill,
-      contentPadding: contentPadding,
+      contentPadding: EdgeInsets.symmetric(vertical: 12.sp , horizontal:12.sp),
       errorText: errorText,
       primaryColor: widget.primaryColor,
       valueStyle: widget.textStyle ??
-          StyleText.fontSize12Weight400.copyWith(color: AppColors.text),
-      // Figma placeholder: "Text Here" in #797979.
+          StyleText.fontSize14Weight400.copyWith(
+              color: AppColors.text, fontSize: 14.sp),
+      // BUG-129 / BUG-136: field-specific hint in a readable grey.
       hintStyle: widget.hintStyle ??
-          StyleText.fontSize12Weight400
-              .copyWith(color: const Color(0xFF797979)),
+          StyleText.fontSize14Weight400
+              .copyWith(color: SiteColors.placeholder),
       inputFormatters: [
         LengthLimitingTextInputFormatter(widget.maxLength),
       ],
@@ -196,7 +198,7 @@ class _CustomValidatedTextFieldMasterState
           required: widget.required,
           textDirection: widget.textDirection,
         ),
-        SizedBox(height: 6.h),
+        const SizedBox(height: 8),
         field,
       ],
     );

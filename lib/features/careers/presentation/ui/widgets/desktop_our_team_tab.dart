@@ -22,8 +22,9 @@ class _DesktopOurTeamTab extends StatelessWidget {
     final double hPad =
     isTablet ? _tabletHPad() : _desktopHPad(screenW);
     final double totalW = screenW - hPad * 2;
-    final double cardW = (totalW - 14.w * 2) / 3;
-    final double meetFz = isTablet ? 16.sp : 20.sp;
+    // Figma: 3 cards of 450 per row, 25 px apart.
+    final double gapW = isTablet ? 14.w : 25.w;
+    final double cardW = (totalW - gapW * 2) / 3;
 
     final List<Widget> rows = [];
     for (int i = 0; i < teams.length; i += 3) {
@@ -44,7 +45,7 @@ class _DesktopOurTeamTab extends StatelessWidget {
         } else {
           rowChildren.add(SizedBox(width: cardW));
         }
-        if (j < i + 2) rowChildren.add(SizedBox(width: 14.w));
+        if (j < i + 2) rowChildren.add(SizedBox(width: gapW));
       }
       rows.add(
         _Reveal(
@@ -59,11 +60,12 @@ class _DesktopOurTeamTab extends StatelessWidget {
           ),
         ),
       );
-      if (i + 3 < teams.length) rows.add(SizedBox(height: 14.h));
+      if (i + 3 < teams.length) rows.add(SizedBox(height: isTablet ? 14.h : 25.w));
     }
 
     return Column(
       children: [
+        // QA-Oct11 #28: the "Meet Our Teams" heading is removed.
         ...rows,
       ],
     );

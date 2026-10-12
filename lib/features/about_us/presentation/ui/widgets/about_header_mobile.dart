@@ -15,14 +15,11 @@ class _AboutHeaderMobile extends StatelessWidget {
         ? _ab(model.title, isRtl)
         : (isRtl ? 'من نحن' : 'About Us');
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
+      // Figma (iPhone): title 70 px under the header, tabs 26 px below.
+      padding: const EdgeInsets.fromLTRB(16, 60, 16, 16),
       child: Text(
         title, // BUG-144: show the CMS text as typed (desktop does too)
-        style: StyleText.fontSize45Weight600.copyWith(
-          fontSize: 28.sp,
-          fontWeight: FontWeight.w900,
-          color: primaryColor,
-        ),
+        style: SiteText.pageTitle(context, color: primaryColor), // BUG-242
       ),
     );
   }

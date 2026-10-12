@@ -13,6 +13,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../theme/appcolors.dart';
 import '../theme/new_theme.dart';
+import '../theme/site_tokens.dart';
 import '2-custom_textfield.dart' show customFieldErrorStyle;
 
 /// A dropdown item model
@@ -40,6 +41,9 @@ class CustomDropdown<T> extends StatefulWidget {
   final String? hint;
   final String? label;
   final String? errorText;
+
+  /// BUG-225: paint the red error border without a message under the field.
+  final bool showErrorBorder;
   final String? helperText;
   final Widget? prefixIcon;
   final Widget? suffixIcon;
@@ -78,6 +82,7 @@ class CustomDropdown<T> extends StatefulWidget {
     this.hint,
     this.label,
     this.errorText,
+    this.showErrorBorder = false,
     this.helperText,
     this.prefixIcon,
     this.suffixIcon,
@@ -111,6 +116,10 @@ class CustomDropdown<T> extends StatefulWidget {
 
 class _CustomDropdownState<T> extends State<CustomDropdown<T>>
     with SingleTickerProviderStateMixin {
+  /// 36.sp trigger: value + hint vertically centred (same as text fields).
+  TextStyle _centred(TextStyle s) =>
+      widget.fieldHeight != null ? SiteField.centred(s) : s;
+
   // ── CompositedTransformTarget link ──────────────────────
   final _layerLink = LayerLink();
 
@@ -237,7 +246,7 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>>
         openUpward: openUpward,
         items: widget.items,
         maxHeight: widget.maxOverlayHeight ?? 240.h,
-        itemHeight: widget.itemHeight ?? 36.sp,
+        itemHeight: SiteField.height,
         borderRadius: widget.borderRadius ?? BorderRadius.circular(4.r),
         elevation: widget.overlayElevation,
         itemStyle: widget.itemStyle,
@@ -281,7 +290,9 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>>
 
   @override
   Widget build(BuildContext context) {
-    final hasError = widget.errorText != null && widget.errorText!.isNotEmpty;
+    final hasErrorText =
+        widget.errorText != null && widget.errorText!.isNotEmpty;
+    final hasError = hasErrorText || widget.showErrorBorder;
     final radius = widget.borderRadius ?? BorderRadius.circular(4.r);
 
     return Column(
@@ -303,9 +314,9 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>>
               children: widget.required
                   ? [
                       TextSpan(
-                        text: '*',
+                        text: ' *',
                         style: StyleText.fontSize14Weight500
-                            .copyWith(color: AppColors.red),
+                            .copyWith(color: SiteColors.error),
                       )
                     ]
                   : [],
@@ -333,7 +344,8 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>>
               _toggleDropdown();
             },
             child: SizedBox(
-            height: widget.fieldHeight,
+            // Every dropdown trigger = SiteField.height (36.sp).
+            height: widget.fieldHeight != null ? SiteField.height : null,
             child: InputDecorator(
               key: _triggerKey,
               isFocused: _hasFocus,
@@ -342,8 +354,10 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>>
               textAlignVertical: TextAlignVertical.center,
               decoration: InputDecoration(
                 isDense: true,
-                contentPadding: widget.triggerPadding ??
-                    EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
+                // Every field and dropdown: 10.sp inner padding.
+                contentPadding: widget.fieldHeight != null
+                    ? EdgeInsets.symmetric(horizontal: SiteField.padding)
+                    : (widget.triggerPadding ?? EdgeInsets.all(SiteField.padding)),
                 filled: true,
                 fillColor: widget.enabled
                     ? (widget.fillColor ?? AppColors.card)
@@ -359,7 +373,7 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>>
                     ? OutlineInputBorder(
                         borderRadius: radius,
                         borderSide:
-                            BorderSide(color: AppColors.red, width: 1.5.w),
+                            const BorderSide(color: SiteColors.error, width: 1.5),
                       )
                     : OutlineInputBorder(
                         borderRadius: radius,
@@ -370,12 +384,13 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>>
                     ? OutlineInputBorder(
                         borderRadius: radius,
                         borderSide:
-                            BorderSide(color: AppColors.red, width: 1.5.w),
+                            const BorderSide(color: SiteColors.error, width: 1.5),
                       )
                     : OutlineInputBorder(
                         borderRadius: radius,
+                        // BUG-225: brand green focus ring (was theme yellow #FFDE59).
                         borderSide:
-                            BorderSide(color: AppColors.primary, width: 1.5.w),
+                            const BorderSide(color: SiteColors.primary, width: 1.5),
                       ),
                 disabledBorder: OutlineInputBorder(
                   borderRadius: radius,
@@ -383,13 +398,15 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>>
                 ),
                 prefixIcon: widget.prefixIcon != null
                     ? Padding(
-                        padding: EdgeInsets.only(left: 12.w, right: 8.w),
+                        padding: EdgeInsetsDirectional.only(
+                            start: SiteField.padding, end: 8.w),
                         child: widget.prefixIcon,
                       )
                     : null,
                 prefixIconConstraints: const BoxConstraints(),
                 suffixIcon: Padding(
-                  padding: EdgeInsets.only(left: 8.w, right: 12.w),
+                  padding: EdgeInsetsDirectional.only(
+                      start: 8.w, end: SiteField.padding),
                   child: widget.suffixIcon ??
                       AnimatedRotation(
                         turns: _isOpen ? 0.5 : 0,
@@ -400,7 +417,7 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>>
                           height: 20.sp,
                           colorFilter: ColorFilter.mode(
                             hasError
-                                ? AppColors.red
+                                ? SiteColors.error
                                 : widget.enabled
                                     ? AppColors.text.withOpacity(0.6)
                                     : AppColors.text.withOpacity(0.3),
@@ -411,10 +428,10 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>>
                 ),
                 suffixIconConstraints: const BoxConstraints(),
                 hintText: _selectedItem == null ? (widget.hint ?? '') : null,
-                hintStyle: widget.hintStyle ??
+                hintStyle: _centred(widget.hintStyle ??
                     StyleText.fontSize14Weight400.copyWith(
                       color: AppColors.text.withOpacity(0.4),
-                    ),
+                    )),
                 // Suppress built-in error text — we render our own below
                 errorText: null,
               ),
@@ -429,12 +446,12 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>>
                         Expanded(
                           child: Text(
                             _selectedItem!.label,
-                            style: widget.valueStyle ??
+                            style: _centred(widget.valueStyle ??
                                 StyleText.fontSize12Weight400.copyWith(
                                   color: widget.enabled
                                       ? AppColors.text
                                       : AppColors.text.withOpacity(0.4),
-                                ),
+                                )),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -451,13 +468,13 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>>
         ),
 
         // ── Error / Helper ─────────────────────────────────
-        if (hasError) ...[
-          SizedBox(height: 4.h),
+        if (hasErrorText) ...[
+          const SizedBox(height: SiteText.errorGap), // BUG-131
           Text(
             widget.errorText!,
             style: widget.errorStyle ?? customFieldErrorStyle(),
           ),
-          SizedBox(height: 6.h), // BUG-131: same spacing as text fields
+          const SizedBox(height: 4), // BUG-131: same spacing as text fields
         ] else if (widget.helperText != null) ...[
           SizedBox(height: 4.h),
           Text(
@@ -659,11 +676,13 @@ class _DropdownItemTileState<T> extends State<_DropdownItemTile<T>> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           height: widget.height,
-          padding: EdgeInsets.symmetric(horizontal: 12.w),
+          padding: EdgeInsets.symmetric(horizontal: SiteField.padding),
+          // BUG-225: selected / hovered item = light brand green (#E0F0E6)
+          // with dark text — never the theme yellow.
           color: widget.isSelected
-              ? AppColors.primary
+              ? SiteColors.primaryTint
               : (_hovered && !isDisabled)
-                  ? AppColors.primary
+                  ? SiteColors.primaryTint.withOpacity(0.6)
                   : Colors.transparent,
           child: Row(
             children: [
@@ -681,9 +700,9 @@ class _DropdownItemTileState<T> extends State<_DropdownItemTile<T>> {
                       .copyWith(
                     color: isDisabled
                         ? AppColors.text.withOpacity(0.3)
-                        : (widget.isSelected || _hovered)
-                            ? AppColors.white
-                            : AppColors.secondaryText,
+                        : widget.isSelected
+                            ? SiteColors.primary
+                            : SiteColors.textStrong,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),

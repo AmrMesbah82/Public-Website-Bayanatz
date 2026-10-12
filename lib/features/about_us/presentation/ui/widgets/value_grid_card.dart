@@ -11,6 +11,9 @@ class _ValueGridCard extends StatefulWidget {
   final double padding;
   final VoidCallback onTap;
   final bool rowLayout;
+  /// Figma desktop tile: 85 px square, radius 12, shadow 10 % black blur 30,
+  /// Bold text #2D2D2D.
+  final bool figmaTile;
   const _ValueGridCard({
     required this.title,
     required this.iconUrl,
@@ -22,6 +25,7 @@ class _ValueGridCard extends StatefulWidget {
     required this.padding,
     required this.onTap,
     this.rowLayout = false,
+    this.figmaTile = false,
   });
   @override
   State<_ValueGridCard> createState() => _ValueGridCardState();
@@ -43,8 +47,10 @@ class _ValueGridCardState extends State<_ValueGridCard> {
       width: widget.iconSize,
       height: widget.iconSize,
       fit: BoxFit.contain,
-      colorFilter: (sel && _isSvgUrl(widget.iconUrl))
-          ? const ColorFilter.mode(Colors.white, BlendMode.srcIn)
+      // BUG-227: white GLYPH on the green selected tile (the background
+      // shape is stripped first, so it no longer becomes a white square).
+      colorFilter: _isSvgUrl(widget.iconUrl)
+          ? ColorFilter.mode(sel ? Colors.white : widget.primaryColor, BlendMode.srcIn)
           : null,
     )
         : Icon(
@@ -56,44 +62,52 @@ class _ValueGridCardState extends State<_ValueGridCard> {
     final Widget titleWidget = Text(
       FormatHelper.capitalize(widget.title),
       textAlign: widget.rowLayout ? TextAlign.start : TextAlign.center,
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
+      // BUG-228: full title, wrapping over 2–3 lines — never "…".
+      maxLines: 3,
       style: StyleText.fontSize14Weight400.copyWith(
-        fontFamily: 'Cairo',
         fontSize: widget.fontSize,
-        fontWeight: FontWeight.w600,
+        fontWeight: widget.figmaTile ? FontWeight.w700 : FontWeight.w600,
         color: sel
             ? Colors.white
-            : (_hovered ? widget.primaryColor : Colors.black87),
-        height: 1,
+            : (_hovered
+                ? widget.primaryColor
+                : (widget.figmaTile ? SiteColors.textStrong : Colors.black87)),
+        height: widget.figmaTile ? 1.2 : 1.3,
       ),
     );
 
-    return GestureDetector(
-      onTap: widget.onTap,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
+    return Semantics(
+      button: true,
+      selected: sel,
+      child: InkWell(
+        onTap: widget.onTap,
+        onHover: (v) => setState(() => _hovered = v),
+        borderRadius: BorderRadius.circular(10.r),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           width: widget.rowLayout ? null : widget.width,
-          height: widget.rowLayout ? null : 90.r,
+          // BUG-228: no fixed height — the row gives every tile the height
+          // of its tallest neighbour.
+          constraints: widget.rowLayout
+              ? null
+              : BoxConstraints(minHeight: widget.figmaTile ? 85.w : 90.r),
           padding: EdgeInsets.all(widget.padding),
           decoration: BoxDecoration(
             color: sel
                 ? widget.primaryColor
                 : (_hovered ? hoverBg : Colors.white),
-            borderRadius: BorderRadius.circular(10.r),
-            boxShadow: sel
-                ? [
+            borderRadius: BorderRadius.circular(widget.figmaTile ? 12.r : 10.r),
+            boxShadow: widget.figmaTile
+                ? const [BoxShadow(color: Color(0x1A000000), blurRadius: 30)]
+                : sel
+                    ? [
               BoxShadow(
                 color: widget.primaryColor.withOpacity(0.28),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
             ]
-                : [],
+                    : [],
             border: Border.all(
               color: _hovered && !sel
                   ? widget.primaryColor.withOpacity(0.3)

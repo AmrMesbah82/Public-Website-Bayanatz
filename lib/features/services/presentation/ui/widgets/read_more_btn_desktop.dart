@@ -21,26 +21,24 @@ class _ReadMoreBtnDesktopState extends State<_ReadMoreBtnDesktop> {
     final Color hoverColor =
     Color.lerp(widget.primaryColor, Colors.black, 0.2)!;
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit:  (_) => setState(() => _hovered = false),
-      cursor:  SystemMouseCursors.click,
-      child: GestureDetector(
+    // BUG-183: Figma "Read More" 81×34, radius 6, 14 px. BUG-257: focusable.
+    return Material(
+      color: _hovered ? hoverColor : widget.primaryColor,
+      borderRadius: BorderRadius.circular(6),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onHover: (v) => setState(() => _hovered = v),
         onTap: () => context.go('/blog/${widget.postId}'),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          width:    88.w,
-          height:   28.h,
-          decoration: BoxDecoration(
-              color:        _hovered ? hoverColor : widget.primaryColor,
-              borderRadius: BorderRadius.circular(6.r)),
-          child: Center(
-            child: Text(
-                widget.isRtl ? 'اقرأ المزيد' : 'Read More',
-                style: AppTextStyles.font12WhiteCairo.copyWith(
-                    fontSize:   12.sp,
-                    fontWeight: FontWeight.w500)),
-          ),
+        child: Container(
+          // Figma: 81×34, radius 6, Cairo Medium 14 white.
+          constraints: BoxConstraints(minWidth: 81.w, minHeight: 34.w),
+          padding: EdgeInsets.symmetric(horizontal: 8.w),
+          alignment: Alignment.center,
+          child: Text(
+              widget.isRtl ? 'اقرأ المزيد' : 'Read More',
+              style: AppTextStyles.font12WhiteCairo.copyWith(
+                  fontSize:   14.sp,
+                  fontWeight: FontWeight.w500)),
         ),
       ),
     );

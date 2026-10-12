@@ -21,34 +21,41 @@ class _HeroSection extends StatelessWidget {
     final String titleText = data.title.l(context);
     final String descText  = data.shortDescription.l(context);
 
+    // Figma (Home, desktop): "Bayanatz" Cairo Bold 64 #008037, centred,
+    // 73 px under the header; subtitle Work Sans Regular 26 #213D34, 97 px
+    // below the title top, sitting directly on the cards row.
     final TextStyle titleStyle = GoogleFonts.cairo(
-      fontSize:      isMobile ? 28.sp : 48.sp,
+      fontSize:      isMobile ? 40 : 64.sp, // Figma: 40 on the iPhone frame
       fontWeight:    AppFontWeights.bold,
       color:         _primary,
-      letterSpacing: isAr ? 0.0 : -0.5,
-      height:        isAr ? 1.2 : 1.1,
+      height:        isAr ? 1.35 : 1.2,
     );
 
-    final TextStyle descStyle = GoogleFonts.cairo(
-      fontSize:      isMobile ? 12.sp : 20.sp,
+    // Work Sans has no Arabic glyphs — Arabic keeps Cairo.
+    final TextStyle descStyle = (isAr ? GoogleFonts.cairo : GoogleFonts.workSans)(
+      fontSize:      isMobile ? 16 : 26.sp,
       fontWeight:    AppFontWeights.regular,
-      color:         _primary,
-      letterSpacing: isAr ? 0.0 : 0.5,
+      color:         const Color(0xFF213D34),
+      height:        isAr ? 1.5 : 1.17,
     );
+
+    // BUG-231: Arabic (Cairo) glyphs have deeper descenders, so the gap is
+    // larger in Arabic — never less than ≈14 px of clear space.
+    final double gap = isMobile ? (isAr ? 16 : 10) : (isAr ? 26.w : 20.w);
 
     return Container(
       color:  bgColor,
       width:  w,
-      padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 20.w : 36.w,
-        vertical:   isMobile ? 20.h : 44.h,
-      ),
+      padding: isMobile
+          // Figma: title 70 px under the header, buttons 50 px under the subtitle.
+          ? const EdgeInsets.fromLTRB(16, 60, 16, 50)
+          : EdgeInsets.only(left: 36.w, right: 36.w, top: 55.w), // Figma: "Bayanatz" 73 px under the header
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           ConstrainedBox(
             constraints:
-            BoxConstraints(maxWidth: w - (isMobile ? 40.w : 72.w)),
+            BoxConstraints(maxWidth: w - (isMobile ? 40 : 72.w)),
             child: Text(
               titleText,
               textAlign:     TextAlign.center,
@@ -56,9 +63,10 @@ class _HeroSection extends StatelessWidget {
               style:         titleStyle,
             ),
           ),
-          SizedBox(height: 8.h),
-          Container(
-            width: 1000.w,
+          SizedBox(height: gap),
+          ConstrainedBox(
+            constraints: BoxConstraints(
+                maxWidth: isMobile ? w - 40 : SiteLayout.contentWidth(context)),
             child: Text(
               descText,
               textAlign:     TextAlign.center,

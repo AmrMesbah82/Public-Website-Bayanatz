@@ -16,10 +16,12 @@ class _ServiceCardMobile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width:   double.infinity,
-      padding: EdgeInsets.all(14.r),
+      // Figma (iPhone): white card radius 8, padding 15, 8 px gaps; 40 px
+      // icon; title SemiBold 16/28 #09090B; text Regular 14/24 #666666.
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
           color:        _kSurface,
-          borderRadius: BorderRadius.circular(12.r)),
+          borderRadius: BorderRadius.circular(8)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -28,29 +30,28 @@ class _ServiceCardMobile extends StatelessWidget {
             children: [
               _svgIconBox(
                   url:            item.iconUrl,
-                  size:           36.w,
-                  radius:         8.r,
+                  size:           40,
+                  radius:         8,
                   primaryColor:   primaryColor,
                   secondaryColor: secondaryColor),
-              SizedBox(width: 10.w),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(FormatHelper.capitalize(_t(item.title, isRtl)),
                     style: StyleText.fontSize13Weight600.copyWith(
-                        fontFamily: 'Cairo',
-                        fontSize:   13.sp,
+                        fontSize:   16,
+                        height:     1.75,
                         fontWeight: FontWeight.w600,
-                        color:      const Color(0xFF1A1A1A))),
+                        color:      SiteColors.title)),
               ),
             ],
           ),
-          SizedBox(height: 8.h),
+          const SizedBox(height: 8),
           Text(_t(item.description, isRtl),
               style: StyleText.fontSize12Weight400.copyWith(
-                  fontFamily: 'Cairo',
-                  fontSize:   12.sp,
+                  fontSize:   14,
                   fontWeight: FontWeight.w400,
-                  color:      AppColors.secondaryBlack,
-                  height:     1.6)),
+                  color:      SiteColors.description,
+                  height:     24 / 14)),
         ],
       ),
     );

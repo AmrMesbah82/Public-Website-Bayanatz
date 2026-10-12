@@ -18,23 +18,29 @@ class _LeftInfoCard extends StatelessWidget {
         ar: 'حقق أهدافك بكفاءة ودون انقطاع من خلال سير عمل سلس ومتواصل');
 
     return Container(
-      padding: EdgeInsets.all(20.r),
+      padding: EdgeInsets.all(25.w), // Figma: 533 wide card, padding 25, radius 15
       decoration: BoxDecoration(
           color:        Colors.white,
-          borderRadius: BorderRadius.circular(14.r)),
+          borderRadius: BorderRadius.circular(15.r)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Figma info card: intro SemiBold 24 #09090B (line height 40);
+          // "Email" / "Follow Us" Bold 26/30 primary; address Medium 24/30
+          // grey; 40 px between the groups, 12 px label → value (tightened).
           Text(desc,
               style: StyleText.fontSize18Weight500.copyWith(
-                  height: 1.6, color: Colors.black87, fontSize: 14.sp)),
-          SizedBox(height: 24.h),
+                  height: 40 / 24, color: SiteColors.title,
+                  fontWeight: FontWeight.w600, fontSize: 24.sp)),
+          SizedBox(height: 40.w),
           Text(emailLabel,
               style: StyleText.fontSize16Weight600.copyWith(
-                  color: primaryColor, fontSize: 13.sp)),
-          SizedBox(height: 5.h),
-          GestureDetector(
+                  color: primaryColor, fontSize: 26.sp, height: 30 / 26,
+                  fontWeight: FontWeight.w700)),
+          SizedBox(height: 12.w),
+          // BUG-257: focusable with Tab.
+          InkWell(
             onTap: () async {
               final email = cmsData?.email ?? 'info@bayanatz.com';
               final uri   = Uri(scheme: 'mailto', path: email);
@@ -45,19 +51,20 @@ class _LeftInfoCard extends StatelessWidget {
               child: Text(
                 cmsData?.email ?? 'info@bayanatz.com',
                 style: StyleText.fontSize13Weight400.copyWith(
-                  color:           primaryColor,
-                  fontSize:        12.sp,
-                  decoration:      TextDecoration.underline,
-                  decorationColor: primaryColor,
+                  color:      SiteColors.description,
+                  fontSize:   24.sp,
+                  height:     30 / 24,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
           ),
-          SizedBox(height: 20.h),
+          SizedBox(height: 40.w),
           Text(followLabel,
               style: StyleText.fontSize16Weight600.copyWith(
-                  color: primaryColor, fontSize: 13.sp)),
-          SizedBox(height: 10.h),
+                  color: primaryColor, fontSize: 26.sp, height: 30 / 26,
+                  fontWeight: FontWeight.w700)),
+          SizedBox(height: 12.w),
           _SocialRow(
               cmsData: cmsData, scaled: true, primaryColor: primaryColor),
         ],

@@ -127,10 +127,11 @@ class _AboutBodyDesktopState extends State<_AboutBodyDesktop> {
       children: [
         Container(
           width: double.infinity,
-          padding: EdgeInsets.all(16.r),
+          // Figma (Terms / Privacy): white card, radius 15, padding 25.
+          padding: EdgeInsets.all(25.w),
           decoration: BoxDecoration(
             color: _kSurface,
-            borderRadius: BorderRadius.circular(12.r),
+            borderRadius: BorderRadius.circular(15.r),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -165,14 +166,15 @@ class _AboutBodyDesktopState extends State<_AboutBodyDesktop> {
                     ? description
                     : _pendingDocText(widget.isRtl, attachEnUrl, attachArUrl),
                 style: StyleText.fontSize14Weight400.copyWith(
-                  fontSize: 13.sp,
-                  height: 1.75,
+                  fontSize: 18.sp, // Figma: Regular 18, ≈ 35 px lines, grey
+                  height: 35 / 18,
+                  color: SiteColors.description,
                 ),
               ),
             ],
           ),
         ),
-        SizedBox(height: 12.h),
+        SizedBox(height: 20.w),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -195,9 +197,10 @@ class _AboutBodyDesktopState extends State<_AboutBodyDesktop> {
   Widget build(BuildContext context) {
     final double screenW = MediaQuery.of(context).size.width,
         contentW = _desktopContentWidth(context);
-    final double hPad = ((screenW - contentW) / 2).clamp(36.0, double.infinity),
-        gap = 16.w,
-        leftW = 280.w;
+    final double hPad = ((screenW - contentW) / 2).clamp(16.0, double.infinity),
+        gap = 25.w,
+        // Figma: list column 499 of the 1400 content width, 25 px gaps.
+        leftW = 499.w;
     final TermsSection terms = widget.termsModel.termsAndConditions,
         privacy = widget.termsModel.privacyPolicy;
     // App logo (same source as the main/home branding) for the doc top row.
@@ -209,9 +212,12 @@ class _AboutBodyDesktopState extends State<_AboutBodyDesktop> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Top Tab Bar ──
+          // ── Top Tab Bar ── BUG-184: full-width divider under the tabs, the
+          // active tab carries a 2 px primary underline (see the tab item).
+          // Figma: the tab row is inset 55 px on both sides (1290 wide).
+          // Only the selected tab is underlined (no line under the others).
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
+            margin: EdgeInsets.symmetric(horizontal: 55.w),
             child: BlocBuilder<StrategyCubit, StrategyState>(
               builder: (context, strategyState) {
                 // CMS navigation-label icons (set in the admin app)
@@ -283,7 +289,7 @@ class _AboutBodyDesktopState extends State<_AboutBodyDesktop> {
               },
             ),
           ),
-          SizedBox(height: 16.h),
+          SizedBox(height: 30.w),
 
           // ── Tab 0: About Us ──
           if (_selectedTopTab == 0)
@@ -299,7 +305,10 @@ class _AboutBodyDesktopState extends State<_AboutBodyDesktop> {
                       width: leftW,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        // BUG-229: a FIXED 16 px gap in every state (the
+                        // gaps used to stretch to the right panel's height
+                        // and jumped 7–24 px on every click).
+                        mainAxisAlignment: MainAxisAlignment.start,
                         children: List.generate(3, (i) {
                           final bool isLast = i == 2;
                           return _Reveal(
@@ -307,7 +316,7 @@ class _AboutBodyDesktopState extends State<_AboutBodyDesktop> {
                             delay: Duration(milliseconds: 120 + i * 80),
                             direction: _SlideDirection.fromLeft,
                             child: Padding(
-                              padding: EdgeInsets.only(bottom: isLast ? 0 : 8.h),
+                              padding: EdgeInsets.only(bottom: isLast ? 0 : 25.w),
                               child: _DesktopTabItem(
                                 label: _tabLabel(i),
                                 iconUrl: _tabIconUrl(i),
@@ -400,7 +409,6 @@ class _AboutBodyDesktopState extends State<_AboutBodyDesktop> {
                                 Text(
                                   isRtl ? 'البيت الاستراتيجي' : 'Strategic House',
                                   style: StyleText.fontSize14Weight400.copyWith(
-                                    fontFamily: 'Cairo',
                                     fontSize: 18.sp,
                                     fontWeight: FontWeight.w700,
                                     color: widget.primaryColor,
@@ -434,7 +442,6 @@ class _AboutBodyDesktopState extends State<_AboutBodyDesktop> {
                                 child: Text(
                                   isRtl ? 'هذا المحتوى سيتوفر قريبًا' : 'This content will be available soon.', // BUG-17
                                   style: StyleText.fontSize14Weight400.copyWith(
-                                    fontFamily: 'Cairo',
                                     fontSize: 14.sp,
                                     color: Colors.grey[500],
                                   ),

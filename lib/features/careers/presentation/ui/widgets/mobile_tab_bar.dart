@@ -28,7 +28,9 @@ class _MobileTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double boxSize = 35.sp;
+    // Figma (iPhone): 35 px light tiles (10 % #71717A, radius 8), labels
+    // Cairo 14 — active SemiBold black, others Medium grey.
+    const double boxSize = 35;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -50,8 +52,8 @@ class _MobileTabBar extends StatelessWidget {
             onTap: () => onTabChange(i),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              margin: EdgeInsets.only(right: 4.w),
-              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+              margin: const EdgeInsetsDirectional.only(end: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 border: Border(
                   bottom: BorderSide(
@@ -67,43 +69,39 @@ class _MobileTabBar extends StatelessWidget {
                     width: boxSize,
                     height: boxSize,
                     decoration: BoxDecoration(
-                      color: selected ? primary : secondary,
-                      borderRadius: BorderRadius.circular(8.r),
+                      // BUG-214: light inactive tile (never the dark secondary).
+                      color: const Color(0x1A71717A),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Center(
                       child: tabIconUrl.isNotEmpty
-                          ? SvgPicture.network(
-                              tabIconUrl,
-                              width: 20.sp,
-                              height: 20.sp,
-                              colorFilter: ColorFilter.mode(
-                                selected ? Colors.white : primary,
-                                BlendMode.srcIn,
-                              ),
-                              placeholderBuilder: (_) =>
-                                  SizedBox(width: 20.sp, height: 20.sp),
+                          ? TintedNetworkIcon( // BUG-227
+                              url: tabIconUrl,
+                              size: 22,
+                              color: primary,
                             )
                           : SvgPicture.asset(
                               _tabs[i].icon,
-                              width: 20.sp,
-                              height: 20.sp,
+                              width: 22,
+                              height: 22,
                               colorFilter: ColorFilter.mode(
-                                selected ? Colors.white : primary,
+                                primary,
                                 BlendMode.srcIn,
                               ),
                             ),
                     ),
                   ),
-                  SizedBox(width: 5.w),
+                  const SizedBox(width: 10),
                   Text(
                     tabLabelOverride.isNotEmpty
                         ? tabLabelOverride
                         : _tabs[i].label(isRtl),
                     style: StyleText.fontSize13Weight400.copyWith(
-                      fontSize: 16.sp,
+                      fontSize: 14,
+                      height: 22 / 14,
                       fontWeight:
-                      selected ? FontWeight.w700 : FontWeight.w500,
-                      color: selected ? primary : Colors.black54,
+                      selected ? FontWeight.w600 : FontWeight.w500,
+                      color: selected ? Colors.black : SiteColors.description,
                     ),
                   ),
                 ],

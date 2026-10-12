@@ -25,27 +25,26 @@ class _ServicesHeaderDesktop extends StatelessWidget {
         ? 'تقدم بيانتز مجموعة من الخدمات المصممة لدعم مبادرات التحول الرقمي في مؤسستك.'
         : 'Bayanatz offers a range of services designed to support digital transformation initiatives within your organization.');
 
+    // Figma (Services, desktop): title Cairo Bold 64 #008037 70 px under the
+    // header; description Cairo SemiBold 24, Figma "auto" line height
+    // (≈ 45 px), grey (#797979 in Figma → #666666 for 4.5:1 contrast).
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 40.h),
+      padding: EdgeInsets.only(left: hPad, right: hPad, top: 52.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: AppTextStyles.font28BlackSemiBoldCairo.copyWith(
-                  fontSize:   48.sp,
-                  fontWeight: FontWeight.w900,
-                  color:      primaryColor)),
-          SizedBox(height: 12.h),
+          // BUG-178: one page-title style on every page.
+          Text(title, style: SiteText.pageTitle(context, color: primaryColor)),
+          SizedBox(height: 12.w),
           Text(desc,
+              // BUG-136: description grey with ≥ 4.5:1 contrast.
               style: AppTextStyles.font14BlackRegularCairo.copyWith(
-                  fontSize:   16.sp,
-                  height:     1.7,
-                  fontWeight: FontWeight.w500,
-                  color:      AppColors.secondaryBlack)),
+                  fontSize:   24.sp,
+                  height:     1.875,
+                  fontWeight: FontWeight.w600,
+                  color:      SiteColors.description)),
         ],
       ),
     );
   }
 }
-
-// ─── Header Mobile ────────────────────────────────────────────────────────────

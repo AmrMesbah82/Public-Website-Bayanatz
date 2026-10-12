@@ -26,14 +26,18 @@ class _MobileBody extends StatelessWidget {
         children: [
           const SizedBox(height: 20),
 
-          // ── Horizontal scrollable tab buttons ─────────────────────────
+          // BUG-169: the chips WRAP inside the screen (the strip was cut at
+          // the right edge — "…government applic" — with no scroll hint and
+          // no gap between chips).
+          // QA-Oct11 #36: ONE row that scrolls sideways (no stacking).
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: posts.asMap().entries.map((e) {
-                final bool isLast = e.key == posts.length - 1;
                 return Padding(
-                  padding: EdgeInsets.only(right: isLast ? 0 : 10),
+                  padding: EdgeInsetsDirectional.only(
+                      end: e.key == posts.length - 1 ? 0 : 8),
                   child: _BlogNavButton(
                     label: 
                       _tb(e.value.descriptionTitle, isRtl).isNotEmpty
@@ -67,7 +71,7 @@ class _MobileBody extends StatelessWidget {
                   Text(
                     _tb(selected.question, isRtl),
                     style: StyleText.fontSize14Weight400.copyWith(
-                      fontSize:   18,
+                      fontSize:   22,
                       fontWeight: FontWeight.w700,
                       color:      primary,
                     ),
@@ -87,7 +91,7 @@ class _MobileBody extends StatelessWidget {
                               _formatDate(selected.createdAt, isRtl),
                               style: StyleText.fontSize14Weight400.copyWith(
                                 fontSize:   12,
-                                color:      const Color(0xFF797979) /* Figma grey */,
+                                color:      const Color(0xFF666666) /* Figma grey */,
                               ),
                             ),
                           ],
@@ -113,9 +117,9 @@ class _MobileBody extends StatelessWidget {
                   Text(
                     _tb(selected.shortDescription, isRtl),
                     style: StyleText.fontSize14Weight400.copyWith(
-                      fontSize:   13,
+                      fontSize:   16,
                       height:     1.7,
-                      color:      Colors.black54,
+                      color:      SiteColors.description,
                     ),
                   ),
 
@@ -124,7 +128,7 @@ class _MobileBody extends StatelessWidget {
                   _BlockList(
                     blocks:   selected.blocks,
                     isRtl:    isRtl,
-                    fontSize: 13,
+                    fontSize: 16,
                     isMobile: true,
                     primary:  primary,
                   ),

@@ -19,29 +19,38 @@ class _DesktopBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double pageW = (450.w * 3) + (12.w * 2);
+    // BUG-189: the article column = the page content column (it was
+    // 1374.w — wider than the window — so the chip row ran off the edge).
+    final double pageW = SiteLayout.contentWidth(context);
 
     return SizedBox(
-      width: 1010.w,
+      width: pageW,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          SizedBox(height: 32.h),
+          // Figma (article, desktop): chips 68 px under the header, title
+          // Cairo Bold 40 primary ABOVE the white card, card padding 25.
+          SizedBox(height: 68.w),
 
           // ── Tab buttons ────────────────────────────────────────────────
+          // Figma: chips left-aligned at the content edge, 28 px apart;
+          // they WRAP instead of running off (BUG-189).
+          // QA-Oct11 #5: ONE row that scrolls sideways (no second line).
           SizedBox(
             width: pageW,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: posts.asMap().entries.map((e) {
-                final bool isLast = e.key == posts.length - 1;
                 return Padding(
-                  padding: EdgeInsets.only(right: 10.sp),
+                  padding: EdgeInsetsDirectional.only(
+                      end: e.key == posts.length - 1 ? 0 : 28.w),
                   child: _BlogNavButton(
-                    label: 
+                    label:
                         _tb(e.value.descriptionTitle, isRtl).isNotEmpty
                             ? _tb(e.value.descriptionTitle, isRtl)
-                            : _tb(e.value.question, isRtl),  // ← new:
+                            : _tb(e.value.question, isRtl),
                     isSelected: selected.id == e.value.id,
                     onTap:      () => onTabChange(e.value.id),
                     isMobile:   false,
@@ -51,33 +60,39 @@ class _DesktopBody extends StatelessWidget {
                 );
               }).toList(),
             ),
+            ),
           ),
 
-          SizedBox(height: 40.h),
+          SizedBox(height: 34.w),
+
+          // Question as the article title (Figma: Bold 40 primary).
+          SizedBox(
+            width: pageW,
+            child: Text(
+              _tb(selected.question, isRtl),
+              style: AppTextStyles.font28BlackSemiBoldCairo.copyWith(
+                fontSize:   40.sp,
+                height:     1.2,
+                fontWeight: FontWeight.w700,
+                color:      primary,
+              ),
+            ),
+          ),
+          SizedBox(height: 10.w),
 
           // ── Article body ───────────────────────────────────────────────
           Container(
+            // BUG-190: Figma white card, radius 15.
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(8.r),
+              borderRadius: BorderRadius.circular(15.r),
             ),
             width: pageW,
             child: Padding(
-              padding:  EdgeInsets.only(right: 15.sp, left: 15.sp, top: 10.sp),
+              padding: EdgeInsets.all(25.w),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Question as page title
-                  Text(
-                    _tb(selected.question, isRtl),
-                    style: AppTextStyles.font28BlackSemiBoldCairo.copyWith(
-                      fontSize:   28.sp,
-                      fontWeight: FontWeight.w700,
-                      color:      primary,
-                    ),
-                  ),
-                  SizedBox(height: 24.h),
-
                   // ── Intro row: text left, image right ──────────────────
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -86,49 +101,50 @@ class _DesktopBody extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // descriptionTitle
+                            // descriptionTitle — Figma Bold 24/35 #09090B
                             Text(
-                              
-                                  _tb(selected.descriptionTitle, isRtl),
+                              _tb(selected.descriptionTitle, isRtl),
                               style: AppTextStyles.font14BlackCairo.copyWith(
-                                fontSize:   15.sp,
+                                fontSize:   24.sp,
+                                height:     35 / 24,
                                 fontWeight: FontWeight.w700,
+                                color:      SiteColors.title,
                               ),
                             ),
-                            SizedBox(height: 10.h),
-                            // shortDescription
+                            SizedBox(height: 12.w),
+                            // shortDescription — Figma Regular 18/30 grey
                             Text(
-                              
-                                  _tb(selected.shortDescription, isRtl),
+                              _tb(selected.shortDescription, isRtl),
                               style: AppTextStyles.font12BlackCairoRegular
                                   .copyWith(
-                                fontSize: 13.sp,
-                                height:   1.7,
-                                color:    AppColors.secondaryBlack,
+                                fontSize: 18.sp,
+                                height:   30 / 18,
+                                color:    SiteColors.description,
                               ),
                             ),
-                            SizedBox(height: 10.h),
-                            // date
+                            SizedBox(height: 28.w),
+                            // date — Figma SemiBold 14 grey
                             Text(
                               FormatHelper.capitalize(
                                   _formatDate(selected.createdAt, isRtl)),
                               style: AppTextStyles.font10BlackCairoRegular
                                   .copyWith(
-                                fontSize: 12.sp,
-                                color:    AppColors.secondaryBlack,
+                                fontSize:   14.sp,
+                                fontWeight: FontWeight.w600,
+                                color:      SiteColors.meta,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      SizedBox(width: 32.w),
+                      SizedBox(width: 15.w),
 
-                      // ✅ SVG-only image
+                      // Figma intro image 602×233, radius 12.
                       _BlogImage(
                         url:           selected.imageUrl,
-                        width:         240.w,
-                        height:        190.h,
-                        radius:        12.r,
+                        width:         602.w,
+                        height:        233.w,
+                        radius:        12,
                         fallbackColor: secondary,
                         primaryColor:  primary,
                       ),
@@ -136,21 +152,20 @@ class _DesktopBody extends StatelessWidget {
                   ),
 
                   // ── Blocks: always shown (no read more/less) ───────────
-                  SizedBox(height: 28.h),
+                  SizedBox(height: 50.w),
                   _BlockList(
                     blocks:   selected.blocks,
                     isRtl:    isRtl,
-                    fontSize: 13.sp,
+                    fontSize: 24.sp, // Figma 24 px, line height 180 %
                     isMobile: false,
                     primary:  primary,
                   ),
-
                 ],
               ),
             ),
           ),
 
-          SizedBox(height: 48.h),
+          SizedBox(height: 20.w),
         ],
       ),
     );

@@ -30,10 +30,13 @@ class _DesktopRightPanel extends StatelessWidget {
     return Container(
       width: double.infinity,
       height: double.infinity,
-      padding: EdgeInsets.all(16.r),
+      // Figma detail panel (876×454): white, radius 15, padding 25; text
+      // Cairo SemiBold 18 grey, line height 35, 481 px wide; illustration
+      // 220×254 centred vertically, 50 px after the text.
+      padding: EdgeInsets.all(25.w),
       decoration: BoxDecoration(
         color: _kSurface,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(15.r),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -42,21 +45,27 @@ class _DesktopRightPanel extends StatelessWidget {
             child: Text(
               _ab(section.description, isRtl),
               style: StyleText.fontSize14Weight400.copyWith(
-                fontSize: 13.sp,
-                height: 1.75,
+                fontSize: 18.sp,
+                fontWeight: FontWeight.w600,
+                color: SiteColors.description,
+                height: 35 / 18,
               ),
             ),
           ),
           if (section.svgUrl.isNotEmpty) ...[
-            SizedBox(width: 16.w),
-            // ✅ FIX: no colorFilter — render the real uploaded image
-            _netImg(
-              url: section.svgUrl,
-              width: 180.w,
-              height: 180.h,
-              fit: BoxFit.contain,
-              borderRadius: BorderRadius.circular(10.r),
+            SizedBox(width: 50.w),
+            Align(
+              alignment: Alignment.center,
+              // ✅ FIX: no colorFilter — render the real uploaded image
+              child: _netImg(
+                url: section.svgUrl,
+                width: 220.w,
+                height: 254.w,
+                fit: BoxFit.contain,
+                borderRadius: BorderRadius.circular(10.r),
+              ),
             ),
+            SizedBox(width: 25.w),
           ],
         ],
       ),

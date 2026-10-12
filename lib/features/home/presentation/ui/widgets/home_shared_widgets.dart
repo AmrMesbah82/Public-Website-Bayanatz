@@ -7,16 +7,23 @@ part of '../pages/home_page.dart';
 class _CircleIcon extends StatelessWidget {
   final String iconUrl;
   final Color? iconColor;
+  /// Diameter; defaults to the Figma 50 px (desktop) / 44 px (phone).
+  final double? size;
 
   const _CircleIcon({
     required this.iconUrl,
     this.iconColor,
+    this.size,
   });
 
   @override
   Widget build(BuildContext context) {
+    // BUG-232 / BUG-181 — Figma: service icons in 50×50 white circles with a
+    // clearly visible glyph; sized with the layout (was 36 px / 12 px glyph).
+    final bool mobile = MediaQuery.sizeOf(context).width < 600;
+    final double d = size ?? (mobile ? 44 : 50.w);
     return Container(
-      width: 36.w, height: 36.w,
+      width: d, height: d,
       decoration: const BoxDecoration(
         shape: BoxShape.circle,
         color: Colors.white,
@@ -24,12 +31,12 @@ class _CircleIcon extends StatelessWidget {
       child: ClipOval(
         child: _smartImage(
           url:         iconUrl,
-          width:       18.w,
-          height:      18.w,
+          width:       d * 0.56,
+          height:      d * 0.56,
           fit:         BoxFit.contain,
           colorFilter: iconColor,
           fallback:
-          Icon(Icons.image_outlined, size: 16.sp, color: Colors.grey),
+          Icon(Icons.image_outlined, size: d * 0.5, color: Colors.grey),
         ),
       ),
     );
@@ -97,31 +104,30 @@ class _SectionImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final r = radius ?? 12.r;
-
-    if (imageUrl.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(8.r),
-        child: Container(
-          width: width, height: height,
-          color: AppColors.card,
-          alignment: Alignment.center,
-          // BUG-68: section images may now be photos (PNG/JPG/WebP).
-          child: _SmartNetworkImage(
-            imageUrl,
-            width:  (width ?? double.infinity) * 0.75,
-            height: height * 0.75,
-            fit:    BoxFit.cover,
-          ),
-        ),
-      );
-    }
+    // BUG-181 — Figma: images sit on WHITE cards with radius 20 (they were
+    // bare images on light-grey squares).
+    final r = radius ?? 20.0;
 
     return Container(
       width: width, height: height,
+      padding: EdgeInsets.all(height * 0.06),
       decoration: BoxDecoration(
-          color:        Colors.white,
-          borderRadius: BorderRadius.circular(r)),
+        color:        Colors.white,
+        borderRadius: BorderRadius.circular(r),
+      ),
+      alignment: Alignment.center,
+      child: imageUrl.isEmpty
+          ? null
+          : ClipRRect(
+              borderRadius: BorderRadius.circular(r * 0.6),
+              // BUG-68 / BUG-251: PNG/JPG/WebP and raster-in-SVG uploads.
+              child: _SmartNetworkImage(
+                imageUrl,
+                width:  width,
+                height: height,
+                fit:    BoxFit.contain,
+              ),
+            ),
     );
   }
 }
@@ -129,39 +135,48 @@ class _SectionImage extends StatelessWidget {
 class _GreenCard extends StatelessWidget {
   final double? width;
   final double? height;
+  final double? minHeight;
   final String  text;
   final Color   color;
   final double? fontSize;
   final bool    isRtl;
+  /// Figma → screen factor of the desktop composition (null = 1 / phone px).
+  final double? k;
 
   const _GreenCard({
     this.width,
     this.height,
+    this.minHeight,
     required this.text,
     required this.color,
     this.fontSize,
     this.isRtl = false,
+    this.k,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Figma: green text cards, radius 20, padding 15, Cairo Regular 16 white
+    // (Figma "auto" line height ≈ 1.875 for Cairo).
+    final double kk = k ?? 1;
     return Container(
       width:   width,
       height:  height,
-      padding: EdgeInsets.all(10.r),
+      constraints: minHeight != null ? BoxConstraints(minHeight: minHeight!) : null,
+      padding: EdgeInsets.all(k != null ? 15 * kk : 16),
       decoration: BoxDecoration(
         color:        color,
-        borderRadius: BorderRadius.circular(10.r),
+        borderRadius: BorderRadius.circular(20 * kk),
       ),
       child: Text(
         text,
         textAlign:     isRtl ? TextAlign.right : TextAlign.left,
         textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
         style: GoogleFonts.cairo(
-          fontSize:   fontSize ?? 12.sp,
+          fontSize:   fontSize ?? (k != null ? math.max(13.0, 16 * kk) : 16),
           fontWeight: FontWeight.w400,
           color:      Colors.white,
-          height:     1.4,
+          height:     k != null ? 1.875 : 1.5,
         ),
       ),
     );

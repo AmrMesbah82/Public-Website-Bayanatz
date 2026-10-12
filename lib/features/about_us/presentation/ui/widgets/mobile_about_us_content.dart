@@ -64,7 +64,7 @@ class _MobileAboutUsContentState extends State<_MobileAboutUsContent> {
       children: tabs.map((tab) {
         final bool isOpen = _expanded == tab.tabIndex;
         return Padding(
-          padding: EdgeInsets.only(bottom: 10.h),
+          padding: const EdgeInsets.only(bottom: 15), // Figma 15
           child: _MobileAccordionItem(
             tab: tab,
             values: widget.model.values,
