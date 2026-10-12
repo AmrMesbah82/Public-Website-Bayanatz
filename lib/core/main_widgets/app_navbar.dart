@@ -228,9 +228,11 @@ class AppNavbar extends StatelessWidget {
         final Color navbarBg = _navbarBgFromState(cmsState); // ✅ CMS-driven bg
         final double w       = MediaQuery.of(context).size.width;
 
-        // BUG-162 / BUG-161: the full menu only from 1024 px; below that the
-        // ☰ header (it used to switch at ~541 px and squeeze the desktop menu).
-        if (w >= _BP.tablet) {
+        // Tablet AND desktop (≥ 600 px): the full navbar (logo · menu ·
+        // AR/ENG). Only phones (< 600 px) get the ☰ header + drawer. The menu
+        // is centred and scales down (FittedBox) if a tablet is narrow, so it
+        // never overflows.
+        if (w >= _BP.mobile) {
           return _NavbarDesktop(
             currentRoute: currentRoute,
             primary:      primary,
@@ -303,15 +305,14 @@ class _NavbarDesktop extends StatelessWidget {
                   child: Row(
                     children: [
                       const _BayanatzLogo(rawSize: true),
-                      // Figma: the menu starts 392 px from the card's start
-                      // edge (15 + 70 logo + 307).
-                      SizedBox(width: 307.w * _kHdr),
+                      // Menu is centred between the logo and the language
+                      // toggle, so the gap logo→menu equals menu→toggle.
+                      SizedBox(width: 16.w),
                       Expanded(
-                        child: Align(
-                          alignment: AlignmentDirectional.centerStart,
+                        child: Center(
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
-                            alignment: AlignmentDirectional.centerStart,
+                            alignment: Alignment.center,
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:website_app/features/home/presentation/controller/home_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:website_app/core/widgets/app_logo_loader.dart';
 import 'package:go_router/go_router.dart';
 
 import '../main_widgets/not_found_page.dart';
@@ -134,17 +137,13 @@ class _DeferredPageState extends State<_DeferredPage> {
         if (snap.hasError) {
           return const NotFoundPage();
         }
-        return const ColoredBox(
-          color: Color(0xFFF1F2ED),
-          child: Center(
-            child: SizedBox(
-              width: 32,
-              height: 32,
-              child: CircularProgressIndicator(
-                  strokeWidth: 3, color: Color(0xFF008037)),
-            ),
-          ),
-        );
+        // Page code still downloading → the same logo loader the pages use
+        // (never a blank screen or a spinner).
+        String logoUrl = '';
+        try {
+          logoUrl = context.read<HomeCmsCubit>().current.branding.logoUrl;
+        } catch (_) {}
+        return AppLogoLoader(logoUrl: logoUrl);
       },
     );
   }
@@ -155,6 +154,7 @@ class _DeferredPageState extends State<_DeferredPage> {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class AppRouter {
+
   static final GoRouter router = GoRouter(
     initialLocation: '/',
     // BUG-56: unknown URLs showed a raw "GoException: no routes for location"

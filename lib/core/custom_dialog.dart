@@ -8,6 +8,7 @@
 /// Created by: Amr Mesbah
 /// Last Update: 08/3/2026
 
+import 'package:website_app/core/custom/circle_progress.dart';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -899,12 +900,7 @@ class _PublishConfirmDialogState extends State<_PublishConfirmDialog> {
               child: SizedBox(
                 height: 48.h,
                 child: _loading
-                    ? const Center(
-                  child: CircularProgressIndicator(
-                    color: Color(0xFF008037),
-                    strokeWidth: 2.5,
-                  ),
-                )
+                    ? const CircleProgress(size: 32, strokeWidth: 2.5)
                     : Row(
                   children: [
                     Expanded(

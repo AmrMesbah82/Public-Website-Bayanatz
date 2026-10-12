@@ -277,6 +277,17 @@ Widget _topTabIcon({
   );
 }
 
+/// Branding contrast rule: a DARK background gets a LIGHT icon/text and a
+/// LIGHT background gets a DARK one. [bg] is the colour coming from Firebase
+/// (CMS branding). A semi-transparent [bg] is first composited over [base]
+/// (the page/card behind it) so the decision uses the colour the user sees.
+Color _onBrandColor(Color bg, {Color base = Colors.white}) {
+  final Color shown = bg.opacity < 1 ? Color.alphaBlend(bg, base) : bg;
+  return ThemeData.estimateBrightnessForColor(shown) == Brightness.dark
+      ? Colors.white
+      : const Color(0xFF1F1F1F);
+}
+
 /// Material fallback icons for the 4 About-page top tabs.
 const List<IconData> _kTopTabFallbackIcons = [
   Icons.info_outline,           // About Us

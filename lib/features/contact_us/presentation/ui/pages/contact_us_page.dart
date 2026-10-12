@@ -18,6 +18,9 @@
 //      switches to real backgroundColor once HomeCmsLoaded fires.
 // FIX: Desktop layout now fully responsive — no overflow when window resized.
 
+import 'package:website_app/core/custom/circle_progress.dart';
+import 'package:website_app/core/widgets/app_logo_loader.dart';
+import 'package:website_app/core/utils/svg_preload.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -125,15 +128,29 @@ class ContactPage extends StatelessWidget {
   /// viewport and the admin screen carries its own actions below it.
   final bool showFooter;
 
+  /// The app-wide [ContactUsCmsCubit] from main.dart, or null when this page
+  /// runs outside the website app (e.g. the admin preview).
+  static ContactUsCmsCubit? _appWideCmsCubit(BuildContext context) {
+    try {
+      return BlocProvider.of<ContactUsCmsCubit>(context, listen: false);
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => ContactCubit()),
-        contactCmsCubit == null
+        // Live site: reuse the app-wide cubit preloaded at startup (main.dart)
+        // so the page shows instantly. Admin preview passes its own cubit.
+        // Only when neither exists does the page create and load one.
+        (contactCmsCubit ?? _appWideCmsCubit(context)) == null
             ? BlocProvider<ContactUsCmsCubit>(
                 create: (_) => ContactUsCmsCubit()..load())
-            : BlocProvider<ContactUsCmsCubit>.value(value: contactCmsCubit!),
+            : BlocProvider<ContactUsCmsCubit>.value(
+                value: (contactCmsCubit ?? _appWideCmsCubit(context))!),
         BlocProvider(create: (_) => ContactOtpCubit()),
       ],
       child: _ContactPageView(showFooter: showFooter),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:website_app/core/custom/circle_progress.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -21,6 +22,7 @@ import 'package:website_app/core/widgets/format_helper.dart';
 import '../../../../../core/responsive/site_layout.dart';
 import '../../../../../core/theme/site_tokens.dart';
 import '../widgets/job_i18n.dart';
+import '../../../../departments/presentation/controller/department_cubit.dart';
 
 part '../widgets/localization_helper.dart';
 part '../widgets/filter_tab.dart';
@@ -179,9 +181,7 @@ class _JobListingsPageState extends State<JobListingsPage> {
                           child: AppNavbar(currentRoute: '/careers'),
                         ),
                         Expanded(
-                          child: Center(
-                            child: CircularProgressIndicator(color: primaryColor),
-                          ),
+                          child: const CircleProgress(),
                         ),
                         const AppFooter(),
                       ],
@@ -198,6 +198,13 @@ class _JobListingsPageState extends State<JobListingsPage> {
                 } else {
                   allJobs = context.read<JobListingCubit>().allJobs;
                 }
+
+                // Rebuild when admin › Departments arrive: the Arabic names
+                // come from DepartmentCubit, which loads AFTER the first
+                // build — without this the filter kept the English names.
+                try {
+                  context.watch<DepartmentCubit>();
+                } catch (_) {/* no DepartmentCubit (admin preview) */}
 
                 final activeJobs  = _getActiveJobs(allJobs);
                 final departments = _departments(activeJobs, l.isAr);
@@ -242,7 +249,11 @@ class _JobListingsPageState extends State<JobListingsPage> {
                                               textAlign: l.isAr ? TextAlign.right : TextAlign.left,
                                               // BUG-242 / BUG-178: shared page-title style
                                               // (Jobs used a 48–55 px display size).
-                                              style: SiteText.pageTitle(context, color: primaryColor),
+                                              // Jobs page: all text − 2 px.
+                                              style: () {
+                                                final t = SiteText.pageTitle(context, color: primaryColor);
+                                                return t.copyWith(fontSize: (t.fontSize ?? 64) - 2);
+                                              }(),
                                             ),
                                           ),
                                         ),
@@ -309,11 +320,12 @@ class _JobListingsPageState extends State<JobListingsPage> {
                                               style: SiteText.sectionTitle(context,
                                                   color: SiteColors.description)
                                                   // Figma: Bold 36 desktop, Bold 20 iPhone.
-                                                  .copyWith(fontSize: isPhone ? 20 : 36.sp),
+                                                  .copyWith(fontSize: isPhone ? 18 : 34.sp),
                                             ),
                                           ),
                                         ),
-                                        SizedBox(height: isPhone ? 16 : 8.w),
+                                        // Space between the section title and the first job card.
+                                        SizedBox(height: isPhone ? 20 : 30.w),
                                         if (state is JobListingError)
                                           Center(
                                             child: SizedBox(
@@ -332,7 +344,7 @@ class _JobListingsPageState extends State<JobListingsPage> {
                                                     Expanded(
                                                       child: Text(
                                                         l.errorMsg,
-                                                        style: StyleText.fontSize14Weight400.copyWith(fontSize: 12.sp, color: const Color(0xFFE53935)),
+                                                        style: StyleText.fontSize14Weight400.copyWith(fontSize: 10.sp, color: const Color(0xFFE53935)),
                                                       ),
                                                     ),
                                                     GestureDetector(
@@ -340,7 +352,7 @@ class _JobListingsPageState extends State<JobListingsPage> {
                                                       child: Text(
                                                         l.retry,
                                                         style: StyleText.fontSize12Weight600.copyWith(
-                                                          fontSize: 12.sp,
+                                                          fontSize: 10.sp,
                                                           fontWeight: FontWeight.w600,
                                                           color: primaryColor,
                                                           decoration: TextDecoration.underline,
@@ -368,7 +380,7 @@ class _JobListingsPageState extends State<JobListingsPage> {
                                                     _selectedDept == null ? l.noJobsAll : l.noJobsDept(_selectedDept!),
                                                     textAlign: TextAlign.center,
                                                     style: StyleText.fontSize16Weight600.copyWith(
-                                                      fontSize: 16.sp,
+                                                      fontSize: 14.sp,
                                                       color: AppColors.text,
                                                     ),
                                                   ),
@@ -377,7 +389,7 @@ class _JobListingsPageState extends State<JobListingsPage> {
                                                     l.checkBackSoon,
                                                     textAlign: TextAlign.center,
                                                     style: StyleText.fontSize14Weight400.copyWith(
-                                                      fontSize: 13.sp,
+                                                      fontSize: 11.sp,
                                                       color: AppColors.secondaryText,
                                                     ),
                                                   ),
@@ -387,7 +399,7 @@ class _JobListingsPageState extends State<JobListingsPage> {
                                                     child: Text(
                                                       l.contactUs,
                                                       style: StyleText.fontSize14Weight600.copyWith(
-                                                        fontSize: 14.sp,
+                                                        fontSize: 12.sp,
                                                         color: primaryColor,
                                                         decoration: TextDecoration.underline,
                                                         decorationColor: primaryColor,

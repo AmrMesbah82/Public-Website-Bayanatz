@@ -103,8 +103,8 @@ class _MobileAccordionItemState extends State<_MobileAccordionItem> {
                     if (widget.isExpanded)
                       // Figma: 40×20 primary chip (radius 6) with ⌃.
                       Container(
-                        width: 40,
-                        height: 20,
+                        width: 30.sp,
+                        height: 30.sp,
                         decoration: BoxDecoration(
                           color: widget.primaryColor,
                           borderRadius: BorderRadius.circular(6),

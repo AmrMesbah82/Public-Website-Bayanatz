@@ -53,23 +53,29 @@ class _ValuesGridDesktopState extends State<_ValuesGridDesktop> {
           padding: EdgeInsets.symmetric(horizontal: 35.w, vertical: 45.w),
           decoration: BoxDecoration(
             color: Colors.white,
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
+            // Soft brand glow centred in the panel, fading to white at the
+            // edges. Tiles are fully opaque, so it never tints them.
+            gradient: RadialGradient(
+              center: Alignment.center,
+              radius: 0.9,
               colors: [
+                Color.alphaBlend(
+                    widget.primaryColor.withOpacity(.18), Colors.white),
                 Colors.white,
-                Colors.white,
-                widget.primaryColor.withOpacity(.12),
               ],
-              stops: const [0.0, 0.55, 1.0],
+              stops: const [0.0, 1.0],
             ),
             borderRadius: BorderRadius.circular(15.r),
           ),
           // No LayoutBuilder here: this grid sits inside the About row's
           // IntrinsicHeight (LayoutBuilder can't report intrinsic sizes).
           child: Builder(builder: (context) {
-            final double gap = 55.w;
-            const int perRow = 6;
+            final double hGap = 20.w; // between cards in a row
+            final double vGap = 20.w; // between rows
+            // Tablet (600–1023, incl. iPad vertical): 5 tiles per row;
+            // desktop keeps the Figma 6.
+            final int perRow =
+                MediaQuery.sizeOf(context).width < 1024 ? 5 : 6;
             final rows = <List<int>>[];
             for (int i = 0; i < widget.values.length; i += perRow) {
               rows.add([
@@ -79,13 +85,13 @@ class _ValuesGridDesktopState extends State<_ValuesGridDesktop> {
             return Column(
               children: [
                 for (int r = 0; r < rows.length; r++) ...[
-                  if (r > 0) SizedBox(height: gap),
+                  if (r > 0) SizedBox(height: vGap),
                   IntrinsicHeight(
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         for (int slot = 0; slot < perRow; slot++) ...[
-                          if (slot > 0) SizedBox(width: gap),
+                          if (slot > 0) SizedBox(width: hGap),
                           Expanded(
                             child: slot < rows[r].length
                                 ? _ValueGridCard(
@@ -94,9 +100,8 @@ class _ValuesGridDesktopState extends State<_ValuesGridDesktop> {
                                     isSelected: rows[r][slot] == idx,
                                     primaryColor: widget.primaryColor,
                                     width: double.infinity,
-                                    iconSize: 28.w,
-                                    // Figma 10 px; BUG-228 keeps ≥ 13 px.
-                                    fontSize: 13,
+                                    iconSize: 40.w,
+                                    fontSize: 11,
                                     padding: 6.w,
                                     figmaTile: true,
                                     onTap: () => setState(() => _selectedIndex = rows[r][slot]),

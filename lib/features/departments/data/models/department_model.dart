@@ -26,13 +26,27 @@ class DepartmentModel {
   factory DepartmentModel.fromMap(String id, Map<String, dynamic> map) {
     return DepartmentModel(
       id: id,
-      nameEn: map['nameEn'] as String? ?? '',
-      nameAr: map['nameAr'] as String? ?? '',
-      iconUrl: map['iconUrl'] as String? ?? '',
-      createdAt: map['createdAt'] != null
-          ? DateTime.tryParse(map['createdAt'] as String)
-          : null,
+      // Tolerant parsing: ONE document with an unexpected type (e.g. a
+      // Firestore Timestamp in createdAt) used to throw here and make the
+      // WHOLE department list fail → Arabic names never reached the site.
+      nameEn: (map['nameEn'] ?? '').toString(),
+      nameAr: (map['nameAr'] ?? '').toString(),
+      iconUrl: (map['iconUrl'] ?? '').toString(),
+      createdAt: _parseDate(map['createdAt']),
     );
+  }
+
+  /// createdAt may be an ISO string, a Firestore Timestamp or millis.
+  static DateTime? _parseDate(dynamic v) {
+    if (v == null) return null;
+    if (v is DateTime) return v;
+    if (v is String) return DateTime.tryParse(v);
+    if (v is int) return DateTime.fromMillisecondsSinceEpoch(v);
+    try {
+      return (v as dynamic).toDate() as DateTime; // Timestamp
+    } catch (_) {
+      return null;
+    }
   }
 
   Map<String, dynamic> toMap() => {

@@ -78,7 +78,7 @@ class _DesktopBody extends StatelessWidget {
             // BUG-142: the intro paragraph sits 10.sp inside its white card,
             // so the title gets the same inset → one left edge.
             child: Padding(
-              padding: EdgeInsetsDirectional.only(start: 10.sp),
+              padding: EdgeInsetsDirectional.only(start: 0.sp),
               // BUG-178: shared page-title style.
               child: Text(
                 _t('Careers', 'الوظائف', isRtl),

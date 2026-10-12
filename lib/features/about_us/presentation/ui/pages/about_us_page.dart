@@ -17,6 +17,7 @@
 //          renders unsaved work without a single network read.
 
 // ignore_for_file: avoid_web_libraries_in_flutter
+import 'package:website_app/core/widgets/app_logo_loader.dart';
 import 'dart:html' as html;
 import 'dart:convert';
 import 'dart:typed_data';

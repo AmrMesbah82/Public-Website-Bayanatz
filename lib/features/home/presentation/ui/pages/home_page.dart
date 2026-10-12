@@ -17,6 +17,8 @@
 //              Full AR / EN bilingual support via LanguageCubit.
 //              STICKY NAVBAR: GlobalKey measured dynamically.
 
+import 'package:website_app/core/widgets/app_logo_loader.dart';
+import 'package:website_app/core/utils/svg_preload.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -164,24 +166,10 @@ bool _isPageVisible(HomePageModel data) {
 // SVG PRELOADER
 // ═══════════════════════════════════════════════════════════════════════════════
 
-Future<void> _preloadSvgImages(List<String> urls) async {
-  final validUrls = urls
-      .where((url) =>
-  url.isNotEmpty &&
-      (url.startsWith('http://') || url.startsWith('https://')))
-      .toSet()
-      .toList();
-
-  await Future.wait(
-    validUrls.map((url) async {
-      final loader = SvgNetworkLoader(url);
-      await svg.cache.putIfAbsent(
-        loader.cacheKey(null),
-            () => loader.loadBytes(null),
-      ).catchError((_) => null);
-    }),
-  );
-}
+Future<void> _preloadSvgImages(List<String> urls) =>
+    // Safe preload: broken/non-SVG files are skipped quietly (no uncaught
+    // XmlParserException) — see core/utils/svg_preload.dart.
+    SvgPreload.preload(urls);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Entry point
@@ -203,6 +191,11 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  /// True once Home has been revealed in this browser session — its icons
+  /// and images are then already cached, so coming back to Home (Home tab /
+  /// logo) shows the page directly instead of the loader again.
+  static bool _revealedOnce = false;
+
   bool _showLoader     = true;
   bool _preloadStarted = false;
 
@@ -212,6 +205,12 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    // Returning to Home with the data already in memory → no loader at all.
+    final st = context.read<HomeCmsCubit>().state;
+    if (_revealedOnce && (st is HomeCmsLoaded || st is HomeCmsSaved)) {
+      _showLoader     = false;
+      _preloadStarted = true;
+    }
     Future.delayed(const Duration(seconds: 12), () {
       if (mounted && _showLoader) setState(() => _showLoader = false);
     });
@@ -245,6 +244,7 @@ class _HomePageState extends State<HomePage> {
     // and render a moment later.
     await _preloadSvgImages(allUrls)
         .timeout(const Duration(milliseconds: 700), onTimeout: () {});
+    _revealedOnce = true;
     if (mounted) {
       setState(() => _showLoader = false);
       WidgetsBinding.instance
@@ -310,8 +310,13 @@ class _HomePageState extends State<HomePage> {
           );
         }
 
+        // Data not here yet (first open of the site): show the same logo
+        // loader as the other pages instead of an empty page.
         if (readyData == null) {
-          return Scaffold(backgroundColor: AppColors.background);
+          return _SvgPulseLoader(
+            logoUrl: logoUrl.isEmpty ? null : logoUrl,
+            backgroundColor: AppColors.background,
+          );
         }
 
         if (_showLoader) {

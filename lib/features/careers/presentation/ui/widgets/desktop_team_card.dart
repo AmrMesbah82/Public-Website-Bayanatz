@@ -93,29 +93,23 @@ class _DesktopTeamCardState extends State<_DesktopTeamCard> {
                 textAlign: TextAlign.center,
                 // Figma: Cairo SemiBold, white (Cairo set explicitly so the
                 // weight renders even when the CMS font has no SemiBold).
-                style: GoogleFonts.cairo(
-                  fontSize: nameFz,
-                  height: 24 / 22,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
+                style: StyleText.fontSize18Weight500.copyWith(
+                  color: AppColors.white
+                )
               ),
             ),
             SizedBox(height: gap),
-            Expanded(
-              child: Column(
+            Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
                     desc,
                     textAlign: TextAlign.center,
                     // Figma: Cairo SemiBold 20 / 28, grey, centred.
-                    style: GoogleFonts.cairo(
-                      fontSize: descFz,
-                      height: 28 / 20,
-                      fontWeight: FontWeight.w600,
-                      color: SiteColors.description,
-                    ),
+                      style: StyleText.fontSize16Weight500.copyWith(
+              color: AppColors.text
+              )
                   ),
                   SizedBox(height: gap),
                   _DesktopDeliverableButtons(
@@ -131,7 +125,6 @@ class _DesktopTeamCardState extends State<_DesktopTeamCard> {
                     }),
                   ),
                 ],
-              ),
             ),
           ],
         ),

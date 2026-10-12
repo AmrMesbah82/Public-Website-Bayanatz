@@ -57,8 +57,22 @@ class _MobileBody extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // ── Title (question) ──────────────────────────────────────────
+          // Same content + order as desktop: question title ABOVE the white
+          // card, then descriptionTitle → shortDescription → date → image →
+          // article blocks.
+          Text(
+            _tb(selected.question, isRtl),
+            style: StyleText.fontSize14Weight400.copyWith(
+              fontSize:   22,
+              height:     1.3,
+              fontWeight: FontWeight.w700,
+              color:      primary,
+            ),
+          ),
+          const SizedBox(height: 10),
+
           Container(
+            width: double.infinity,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12.r),
@@ -68,52 +82,21 @@ class _MobileBody extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    _tb(selected.question, isRtl),
-                    style: StyleText.fontSize14Weight400.copyWith(
-                      fontSize:   22,
-                      fontWeight: FontWeight.w700,
-                      color:      primary,
+                  // ── descriptionTitle (desktop: Bold, SiteColors.title) ──
+                  if (_tb(selected.descriptionTitle, isRtl).isNotEmpty) ...[
+                    Text(
+                      _tb(selected.descriptionTitle, isRtl),
+                      style: StyleText.fontSize14Weight400.copyWith(
+                        fontSize:   18,
+                        height:     1.45,
+                        fontWeight: FontWeight.w700,
+                        color:      SiteColors.title,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 8),
+                  ],
 
-                  // ── icon + heading + date LEFT, image RIGHT ───────────────────
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-
-                            Text(
-                              _formatDate(selected.createdAt, isRtl),
-                              style: StyleText.fontSize14Weight400.copyWith(
-                                fontSize:   12,
-                                color:      const Color(0xFF666666) /* Figma grey */,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-
-                      // ✅ SVG-only image
-                      _BlogImage(
-                        url:           selected.imageUrl,
-                        width:         130,
-                        height:        110,
-                        radius:        10,
-                        fallbackColor: secondary,
-                        primaryColor:  primary,
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // ── Short description ─────────────────────────────────────────
+                  // ── Short description ────────────────────────────────
                   Text(
                     _tb(selected.shortDescription, isRtl),
                     style: StyleText.fontSize14Weight400.copyWith(
@@ -122,6 +105,29 @@ class _MobileBody extends StatelessWidget {
                       color:      SiteColors.description,
                     ),
                   ),
+                  const SizedBox(height: 16),
+
+                  // ── Date (desktop: SemiBold, SiteColors.meta) ────────
+                  Text(
+                    FormatHelper.capitalize(
+                        _formatDate(selected.createdAt, isRtl)),
+                    style: StyleText.fontSize14Weight400.copyWith(
+                      fontSize:   12,
+                      fontWeight: FontWeight.w600,
+                      color:      SiteColors.meta,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // ── Intro image — full card width, desktop ratio 602:233 ──
+                  LayoutBuilder(builder: (context, c) => _BlogImage(
+                        url:           selected.imageUrl,
+                        width:         c.maxWidth,
+                        height:        c.maxWidth * 233 / 602,
+                        radius:        10,
+                        fallbackColor: secondary,
+                        primaryColor:  primary,
+                      )),
 
                   // ── Full article content — always shown (no Read More / Read Less)
                   const SizedBox(height: 20),

@@ -42,8 +42,11 @@ class _SocialIconRaw extends StatelessWidget {
             border:       Border.all(color: primaryColor),
             borderRadius: BorderRadius.circular(7.r)),
         child: Center(
-          child: iconUrl != null && iconUrl!.isNotEmpty
+          child: iconUrl != null && iconUrl!.isNotEmpty &&
+                  !SvgPreload.isBad(iconUrl!)
               ? SvgPicture.network(iconUrl!,
+              errorBuilder: (_, __, ___) =>
+                  Icon(Icons.link, size: 16.sp, color: primaryColor),
               width:  20.w,
               height: 20.w,
               fit:    BoxFit.contain,

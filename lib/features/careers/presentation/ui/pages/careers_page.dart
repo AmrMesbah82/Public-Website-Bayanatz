@@ -15,7 +15,10 @@
 // UPDATED: Why Join Our Team, Our Interns, Our Teams all read from Firebase.
 //          Zero UI changes — only data sources replaced.
 
+import 'package:get/get_utils/src/extensions/context_extensions.dart';
+import 'package:website_app/core/widgets/app_logo_loader.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';

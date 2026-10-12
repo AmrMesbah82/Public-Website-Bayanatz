@@ -30,7 +30,7 @@ class _PhoneField extends StatelessWidget {
         // BUG-233: EXACTLY the label widget, style and gap of CustomTextField
         // (requiredLabel + 8 px), so "Phone" and "Email" share one baseline
         // and their boxes one top edge. BUG-128: required "*".
-        requiredLabel(label, required: true),
+        requiredLabel(label, required: true, style: _jobLabelStyle(context)),
         const SizedBox(height: 8),
         LayoutBuilder(builder: (context, c) {
           // BUG-116 / BUG-133: the picker never takes more than 40 % of the
@@ -63,9 +63,14 @@ class _PhoneField extends StatelessWidget {
               triggerPadding:
                   EdgeInsets.symmetric(horizontal: 10.w, vertical: 0),
               valueStyle: StyleText.fontSize12Weight400
-                  .copyWith(color: AppColors.text, fontSize: 14.sp),
+                  .copyWith(
+                  color: AppColors.text,
+                  // Phone: same 10.sp as the field hints.
+                  fontSize: _jobHintSize(context) ?? 14.sp),
               hintStyle: StyleText.fontSize12Weight400
-                  .copyWith(color: SiteColors.placeholder, fontSize: 14.sp),
+                  .copyWith(
+                  color: SiteColors.placeholder,
+                  fontSize: _jobHintSize(context) ?? 14.sp),
             ),
           );
 
@@ -78,6 +83,7 @@ class _PhoneField extends StatelessWidget {
               errorText: errorText,
               height: 42,
               fillColor: Colors.white,
+              hintFontSize: _jobHintSize(context),
               onlyDigits: true,
               textDirection: TextDirection.ltr,
               textAlign: isRtl ? TextAlign.right : TextAlign.start,

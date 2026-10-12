@@ -71,7 +71,7 @@ class _DesktopBody extends StatelessWidget {
             child: Text(
               _tb(selected.question, isRtl),
               style: AppTextStyles.font28BlackSemiBoldCairo.copyWith(
-                fontSize:   40.sp,
+                fontSize:   28.sp,
                 height:     1.2,
                 fontWeight: FontWeight.w700,
                 color:      primary,
@@ -105,7 +105,7 @@ class _DesktopBody extends StatelessWidget {
                             Text(
                               _tb(selected.descriptionTitle, isRtl),
                               style: AppTextStyles.font14BlackCairo.copyWith(
-                                fontSize:   24.sp,
+                                fontSize:   22.sp,
                                 height:     35 / 24,
                                 fontWeight: FontWeight.w700,
                                 color:      SiteColors.title,
@@ -156,7 +156,7 @@ class _DesktopBody extends StatelessWidget {
                   _BlockList(
                     blocks:   selected.blocks,
                     isRtl:    isRtl,
-                    fontSize: 24.sp, // Figma 24 px, line height 180 %
+                    fontSize: 16.sp, // Figma 24 px, line height 180 %
                     isMobile: false,
                     primary:  primary,
                   ),

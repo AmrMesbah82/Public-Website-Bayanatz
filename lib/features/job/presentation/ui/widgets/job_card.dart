@@ -86,12 +86,14 @@ class _JobCardState extends State<_JobCard> {
           label: l.experienceLevel,
           value: job.experienceLevel.localized(l.isAr),
           primary: widget.primary),
-      // BUG-195: admin text exactly as typed (no forced Title Case).
-      _InfoItem(
-          label: l.qualification,
-          value: qual.isEmpty ? '—' : qual,
-          primary: widget.primary),
     ];
+    // Required Qualification is long text → its own FULL-WIDTH row under the
+    // two columns (like Skills), instead of wrapping inside the left column.
+    // BUG-195: admin text exactly as typed (no forced Title Case).
+    final Widget qualificationRow = _InfoItem(
+        label: l.qualification,
+        value: qual.isEmpty ? '—' : qual,
+        primary: widget.primary);
     final right = <Widget>[
       _InfoItem(
           label: l.hireEndDate,
@@ -114,8 +116,8 @@ class _JobCardState extends State<_JobCard> {
                 // QA-Oct11 #33: same size as every other row of the card
                 // (it was 24 on phones — much bigger than the 14 px rows).
                 style: StyleText.fontSize14Weight400.copyWith(
-                  fontSize: phone ? 14 : 24.sp, // Figma Medium 24/32 grey
-                  height: phone ? 1.4 : 32 / 24,
+                  fontSize: phone ? 12 : 22.sp, // Figma 24/32 − 2
+                  height: phone ? 1.4 : 30 / 22,
                   fontWeight: FontWeight.w500,
                   color: SiteColors.description,
                 ),
@@ -167,7 +169,7 @@ class _JobCardState extends State<_JobCard> {
                     title.isEmpty ? l.untitled : title, // BUG-195: as typed
                     // Figma: Cairo Medium 30 black.
                     style: StyleText.fontSize14Weight400.copyWith(
-                      fontSize: phone ? 16 : 30.sp, // Figma Medium 16 / 30
+                      fontSize: phone ? 14 : 28.sp, // Figma 16 / 30 − 2
                       fontWeight: FontWeight.w500,
                       color: Colors.black,
                     ),
@@ -218,15 +220,20 @@ class _JobCardState extends State<_JobCard> {
                 ],
               ),
 
+            // ── Required Qualification — full card width ─────────────────
+            SizedBox(height: phone ? 10.h : 8.w),
+            SizedBox(width: double.infinity, child: qualificationRow),
+
             // ── Skills (BUG-203: Figma card has the Skills chip row) ──────
             if (skills.isNotEmpty) ...[
               SizedBox(height: phone ? 14.h : 8.w),
               JobSkillsRow(
                 label: l.skillsLabel,
                 skills: skills,
+                chipFontDelta: 2, // Jobs page: all text − 2
                 // Figma: "Skills:" Cairo Medium 24 grey.
                 labelStyle: StyleText.fontSize15Weight600.copyWith(
-                  fontSize: phone ? 14 : 24.sp, // Figma Medium 14 / 24 grey
+                  fontSize: phone ? 12 : 22.sp, // Figma 14 / 24 − 2
                   fontWeight: FontWeight.w500,
                   color: SiteColors.description,
                 ),
@@ -236,7 +243,7 @@ class _JobCardState extends State<_JobCard> {
 
             // ── View button ───────────────────────────────────────────────
             Align(
-              alignment: AlignmentDirectional.centerEnd,
+              alignment: AlignmentDirectional.center,
               child: _ViewJobBtn(
                   jobId: job.id, label: l.viewJob, primary: widget.primary),
             ),

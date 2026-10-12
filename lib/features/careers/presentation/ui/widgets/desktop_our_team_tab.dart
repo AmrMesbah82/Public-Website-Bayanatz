@@ -52,12 +52,11 @@ class _DesktopOurTeamTab extends StatelessWidget {
           delay: Duration(milliseconds: 80 + rowIndex * 80),
           direction: _SlideDirection.fromBottom,
           duration: const Duration(milliseconds: 650),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: rowChildren,
-            ),
-          ),
+          // Equal-height cards WITHOUT IntrinsicHeight: IntrinsicHeight
+          // guessed the height from the chips' intrinsic widths, which on web
+          // under-estimates wrapped text → the card was too short and its
+          // bottom overflowed (the diagonal yellow/black overflow stripes).
+          child: _EqualHeightRow(children: rowChildren),
         ),
       );
       if (i + 3 < teams.length) rows.add(SizedBox(height: isTablet ? 14.h : 25.w));
@@ -70,4 +69,93 @@ class _DesktopOurTeamTab extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Lays its children out side by side at their own widths, measures their
+/// REAL heights (actual layout, not intrinsic estimates), then gives every
+/// child the height of the tallest one — equal-height cards that can never
+/// overflow, whatever their content wraps to.
+class _EqualHeightRow extends MultiChildRenderObjectWidget {
+  const _EqualHeightRow({required super.children});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderEqualHeightRow(textDirection: Directionality.of(context));
+
+  @override
+  void updateRenderObject(
+          BuildContext context, _RenderEqualHeightRow renderObject) =>
+      renderObject.textDirection = Directionality.of(context);
+}
+
+class _EqualHeightParentData extends ContainerBoxParentData<RenderBox> {}
+
+class _RenderEqualHeightRow extends RenderBox
+    with
+        ContainerRenderObjectMixin<RenderBox, _EqualHeightParentData>,
+        RenderBoxContainerDefaultsMixin<RenderBox, _EqualHeightParentData> {
+  _RenderEqualHeightRow({required TextDirection textDirection})
+      : _textDirection = textDirection;
+
+  TextDirection _textDirection;
+  set textDirection(TextDirection v) {
+    if (v == _textDirection) return;
+    _textDirection = v;
+    markNeedsLayout();
+  }
+
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _EqualHeightParentData) {
+      child.parentData = _EqualHeightParentData();
+    }
+  }
+
+  @override
+  void performLayout() {
+    // Pass 1: natural size of every child (width from the child itself —
+    // the cards / gaps are fixed-width SizedBoxes).
+    double maxH = 0;
+    RenderBox? child = firstChild;
+    while (child != null) {
+      child.layout(BoxConstraints(maxWidth: constraints.maxWidth),
+          parentUsesSize: true);
+      if (child.size.height > maxH) maxH = child.size.height;
+      child = childAfter(child);
+    }
+    // Pass 2: same width, the row's (tallest) height.
+    double total = 0;
+    child = firstChild;
+    while (child != null) {
+      final double w = child.size.width;
+      child.layout(BoxConstraints.tightFor(width: w, height: maxH),
+          parentUsesSize: true);
+      total += w;
+      child = childAfter(child);
+    }
+    final double width = constraints.constrainWidth(total);
+    size = constraints.constrain(Size(width, maxH));
+    // Position (mirrored in RTL, like a Row).
+    double x = _textDirection == TextDirection.rtl ? width : 0;
+    child = firstChild;
+    while (child != null) {
+      final pd = child.parentData! as _EqualHeightParentData;
+      if (_textDirection == TextDirection.rtl) {
+        x -= child.size.width;
+        pd.offset = Offset(x, 0);
+      } else {
+        pd.offset = Offset(x, 0);
+        x += child.size.width;
+      }
+      child = childAfter(child);
+    }
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) =>
+      defaultPaint(context, offset);
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      defaultHitTestChildren(result, position: position);
 }

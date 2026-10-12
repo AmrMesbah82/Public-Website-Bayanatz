@@ -19,6 +19,7 @@ class _ViewJobBtnState extends State<_ViewJobBtn> {
     final bool phone = MediaQuery.sizeOf(context).width < 600;
     // Figma: "View Job" 210×60, radius 8 (BUG-146: Title Case).
     return Material(
+
       color: _hovered
           ? Color.lerp(widget.primary, Colors.black, 0.15)!
           : widget.primary,
@@ -28,16 +29,16 @@ class _ViewJobBtnState extends State<_ViewJobBtn> {
         onHover: (v) => setState(() => _hovered = v),
         onTap: () => context.go('/jobs/${widget.jobId}'),
         child: Container(
+          width: MediaQuery.sizeOf(context).width*.4,
           // Figma: 210×60, radius 8, Cairo SemiBold 24 white.
           // Figma iPhone: 77×40, padding 10, SemiBold 14.
-          constraints: BoxConstraints(
-              minWidth: phone ? 77 : 210.w, minHeight: phone ? 40 : 60.w),
+          constraints: BoxConstraints(minHeight: phone ? 40 : 60.w),
           alignment: Alignment.center,
           padding: EdgeInsets.symmetric(horizontal: phone ? 10 : 12.w),
           child: Text(
             widget.label,
             style: StyleText.fontSize14Weight400.copyWith(
-              fontSize: phone ? 14 : 24.sp,
+              fontSize: phone ? 12 : 22.sp,
               fontWeight: FontWeight.w600,
               color: Colors.white,
             ),

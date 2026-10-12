@@ -38,7 +38,7 @@ class _DesktopDeliverableButtons extends StatelessWidget {
           _t('Deliverables:', 'المخرجات:', isRtl),
           // Figma: Cairo SemiBold 18 / 28, black.
           style: GoogleFonts.cairo(
-            fontSize: labelFontSize ?? fontSize,
+            fontSize: 14.sp,
             height: figma ? 28 / 18 : null,
             fontWeight: FontWeight.w600,
             color: figma ? Colors.black : SiteColors.description,

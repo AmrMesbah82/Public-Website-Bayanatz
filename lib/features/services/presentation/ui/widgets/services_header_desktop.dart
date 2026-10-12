@@ -13,8 +13,13 @@ class _ServicesHeaderDesktop extends StatelessWidget {
   Widget build(BuildContext context) {
     final double screenW  = MediaQuery.of(context).size.width;
     final double contentW = _desktopContentWidth(context);
-    final double hPad =
-    ((screenW - contentW) / 2).clamp(16.0, double.infinity);
+    // Tablet: the SAME side padding as the service cards below (19.1.w), so
+    // the title / description line up with the cards — no extra indent.
+    final double hPad = screenW < 1024
+        // Tablet: same side margins as the navbar card (site content column).
+        ? ((screenW - SiteLayout.contentWidth(context)) / 2)
+            .clamp(16.0, double.infinity)
+        : ((screenW - contentW) / 2).clamp(16.0, double.infinity);
 
     final String title = _t(model.title, isRtl).isNotEmpty
         ? _t(model.title, isRtl)

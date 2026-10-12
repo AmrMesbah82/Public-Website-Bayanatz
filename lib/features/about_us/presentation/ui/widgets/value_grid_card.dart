@@ -37,7 +37,10 @@ class _ValueGridCardState extends State<_ValueGridCard> {
   @override
   Widget build(BuildContext context) {
     final bool sel = widget.isSelected;
-    final Color hoverBg = _hoverTint(widget.primaryColor);
+    // Solid (opaque) hover colour so the panel gradient never shows
+    // through the card.
+    final Color hoverBg =
+        Color.alphaBlend(_hoverTint(widget.primaryColor), Colors.white);
 
     // ✅ FIX: only apply white colorFilter when the card is selected
     // so the real icon image is visible on non-selected cards

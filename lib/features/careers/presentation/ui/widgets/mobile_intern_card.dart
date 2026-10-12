@@ -87,7 +87,7 @@ class _MobileInternCard extends StatelessWidget {
                       data.positionFor(isRtl),
                       textAlign: TextAlign.center,
                       style: StyleText.fontSize10Weight400.copyWith(
-                        fontSize: 16,
+                        fontSize:context.isPhone ? 10.sp : 16,
                         height: 1.5,
                         color: Colors.white,
                         fontWeight: FontWeight.w600,

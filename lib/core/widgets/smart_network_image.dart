@@ -19,6 +19,7 @@
 //  now detected and the embedded PNG/JPG/WebP is drawn directly with
 //  Image.memory (works in every browser). Real vector SVGs are unchanged.
 
+import 'package:website_app/core/utils/svg_preload.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -81,7 +82,9 @@ class SmartNetworkImage extends StatelessWidget {
 
   Widget get _fallback => fallback ?? SizedBox(width: width, height: height);
 
-  Widget _svg({Widget? onError}) => SvgPicture.network(
+  Widget _svg({Widget? onError}) => SvgPreload.isBad(url)
+      ? (onError ?? _fallback) // known-broken SVG: don't re-parse it
+      : SvgPicture.network(
         url,
         width: width,
         height: height,

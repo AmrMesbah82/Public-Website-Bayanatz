@@ -5,6 +5,7 @@
 // FIXED: Uses dart:html AnchorElement for web download (no printing package)
 // FIXED: Loads Google Font (Roboto) for Unicode support in pdf package
 
+import 'package:website_app/core/custom/circle_progress.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 // ignore: avoid_web_libraries_in_flutter
@@ -548,10 +549,10 @@ class _JobListingExportDialogState extends State<_JobListingExportDialog> {
                               ? SizedBox(
                             width: 18.sp,
                             height: 18.sp,
-                            child: const CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
+                            // White: sits on the primary button.
+                            child: const CircleProgress(
+                              size: 18, strokeWidth: 2,
+                              color: Colors.white, center: false),
                           )
                               : Text(
                             'Download',

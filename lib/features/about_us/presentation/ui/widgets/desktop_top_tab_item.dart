@@ -30,6 +30,9 @@ class _DesktopTopTabItemState extends State<_DesktopTopTabItem> {
   @override
   Widget build(BuildContext context) {
     final bool sel = widget.isSelected;
+    // Tile colour (from Firebase) → contrasting icon colour.
+    final Color tileColor = sel ? widget.primaryColor : widget.secondaryColor;
+    final Color iconColor = _onBrandColor(tileColor);
     // BUG-184 — Figma: icon tile 48×48 (active primary radius 8, inactive a
     // LIGHT tile), label Cairo SemiBold 20 (active primary, inactive grey),
     // 2 px primary underline under the active tab.
@@ -69,9 +72,7 @@ class _DesktopTopTabItemState extends State<_DesktopTopTabItem> {
                 decoration: BoxDecoration(
                   // QA-Oct11 #3: an unselected tile is the selected tile
                   // at 50 % opacity (it used to vanish into the page).
-                  color: sel
-                      ? widget.primaryColor
-                      : widget.primaryColor.withOpacity(1),
+                  color: tileColor,
                   borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Center(
@@ -79,8 +80,8 @@ class _DesktopTopTabItemState extends State<_DesktopTopTabItem> {
                     iconUrl: widget.iconUrl,
                     fallback: _kTopTabFallbackIcons[
                         widget.index.clamp(0, _kTopTabFallbackIcons.length - 1)],
-                    color: Colors.white,
-                    size: 26.w,
+                    color: iconColor,
+                    size: 35.sp,
                   ),
                 ),
               ),

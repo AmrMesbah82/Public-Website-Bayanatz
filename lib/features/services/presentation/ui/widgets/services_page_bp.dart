@@ -52,24 +52,10 @@ Color _parseColor(String hex, {required Color fallback}) {
 // SVG PRELOADER
 // ═══════════════════════════════════════════════════════════════════════════════
 
-Future<void> _preloadSvgImages(List<String> urls) async {
-  final validUrls = urls
-      .where((url) =>
-  url.isNotEmpty &&
-      (url.startsWith('http://') || url.startsWith('https://')))
-      .toSet()
-      .toList();
-
-  await Future.wait(
-    validUrls.map((url) async {
-      final loader = SvgNetworkLoader(url);
-      await svg.cache.putIfAbsent(
-        loader.cacheKey(null),
-            () => loader.loadBytes(null),
-      ).catchError((_) => null);
-    }),
-  );
-}
+Future<void> _preloadSvgImages(List<String> urls) =>
+    // Safe preload: broken/non-SVG files are skipped quietly (no uncaught
+    // XmlParserException) — see core/utils/svg_preload.dart.
+    SvgPreload.preload(urls);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ANIMATION
@@ -81,4 +67,92 @@ enum _SlideDirection { fromBottom, fromLeft, fromRight, fromTop }
 String _formatDate(DateTime? dt, bool isRtl) {
   if (dt == null) return '';
   return FormDateTimeHelper.formatDayMonthYear(dt, arabic: isRtl);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// "See All / See Less" for the service cards — the same behaviour on
+// desktop, tablet and phones: only the first 4 services, then the button
+// reveals the rest.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// How many services are shown before "See All".
+const int _kServicesPreview = 4;
+
+/// Keeps the open / closed state of a "See All" section.
+class _ShowAllSection extends StatefulWidget {
+  const _ShowAllSection({required this.builder});
+  final Widget Function(BuildContext context, bool showAll, VoidCallback toggle)
+      builder;
+
+  @override
+  State<_ShowAllSection> createState() => _ShowAllSectionState();
+}
+
+class _ShowAllSectionState extends State<_ShowAllSection> {
+  bool _showAll = false;
+
+  @override
+  Widget build(BuildContext context) => widget.builder(
+      context, _showAll, () => setState(() => _showAll = !_showAll));
+}
+
+/// The desktop "See All ↓" pill (primary, radius 8), sized for tablet/phone.
+class _SeeAllButton extends StatelessWidget {
+  const _SeeAllButton({
+    required this.showAll,
+    required this.isRtl,
+    required this.primaryColor,
+    required this.onTap,
+    this.fontSize = 14,
+  });
+  final bool showAll;
+  final bool isRtl;
+  final Color primaryColor;
+  final VoidCallback onTap;
+  final double fontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 32, minWidth: 80),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: primaryColor,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  showAll
+                      ? (isRtl ? 'عرض أقل' : 'See Less')
+                      : (isRtl ? 'عرض الكل' : 'See All'),
+                  style: StyleText.fontSize13Weight600.copyWith(
+                    color: Colors.white,
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                AnimatedRotation(
+                  turns: showAll ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(Icons.arrow_downward_rounded,
+                      color: Colors.white, size: fontSize + 2),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

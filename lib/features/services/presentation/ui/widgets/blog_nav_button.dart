@@ -67,7 +67,7 @@ class _BlogNavButtonState extends State<_BlogNavButton> {
               softWrap: false,
               style: StyleText.fontSize12Weight500.copyWith(
                 color:      textColor,
-                fontSize:   widget.isMobile ? 14 : 18.sp,
+                fontSize:   widget.isMobile ? 10 : 14.sp,
                 height:     widget.isMobile ? null : 20 / 18,
                 fontWeight: widget.isMobile ? FontWeight.w600 : FontWeight.w700,
               ),

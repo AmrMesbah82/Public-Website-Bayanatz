@@ -16,6 +16,7 @@ class _Reveal extends StatefulWidget {
 }
 
 class _RevealState extends State<_Reveal> with SingleTickerProviderStateMixin {
+  _RevealCoordinatorState? _coordinator;
   late final AnimationController _ctrl;
   late final Animation<double> _opacity;
   late final Animation<Offset> _slide;
@@ -51,12 +52,20 @@ class _RevealState extends State<_Reveal> with SingleTickerProviderStateMixin {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _RevealCoordinator.of(context)?.register(this);
+    // Keep the coordinator: dispose() must not look up ancestors (Flutter
+    // throws "Looking up a deactivated widget's ancestor is unsafe").
+    final coord = _RevealCoordinator.of(context);
+    if (!identical(coord, _coordinator)) {
+      _coordinator?.unregister(this);
+      _coordinator = coord;
+    }
+    _coordinator?.register(this);
   }
 
   @override
   void dispose() {
-    _RevealCoordinator.of(context)?.unregister(this);
+    _coordinator?.unregister(this);
+    _coordinator = null;
     _ctrl.dispose();
     super.dispose();
   }

@@ -111,7 +111,7 @@ class _DesktopCards extends StatelessWidget {
                 _SectionImage(
                     imageUrl: i < sec.length ? sec[i].imageUrl : '',
                     width:    innerW,
-                    height:   120 * k,
+                    height:   150 * 1,
                     radius:   20 * k),
                 SizedBox(height: 15 * k),
                 // Figma: green text card 200×156, radius 20, 16 px white.
@@ -217,9 +217,9 @@ class _OuterCard extends StatelessWidget {
     // circle, green text card 300×156 (radius 20) below it.
     final double imgW = 235 * k;
     final Widget img = _SectionImage(
-        imageUrl: imageUrl, width: imgW, height: 212 * k, radius: 20 * k);
+        imageUrl: imageUrl, width: imgW, height: 212 * k, radius: 20);
     final Widget icn =
-        _CircleIcon(iconUrl: iconUrl, iconColor: cardColor, size: 50 * k);
+        _CircleIcon(iconUrl: iconUrl, iconColor: cardColor, size: 50 );
 
     return SizedBox(
       width: width,
@@ -248,7 +248,17 @@ class _OuterCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TABLET
+// TABLET  (600–1023 px) — Figma "iPad Vertical View" Home, 1224 frame
+// (node 8022:41794). Content column 1144 (x 40…1184):
+//   outer 300 · 15 · [ inner 200 · 114 · inner 200 ] · 15 · outer 300
+// Outer column : 50 icon (on the inner edge) · 8 · white image 300×154 r8
+//                · 8 · green card 300×156 r20.
+// Middle       : quick links centred on top (first = #E4ECE0 pill 297×34,
+//                then white 258 / 228 / 212 ×34, 10 px apart, Cairo Medium 16,
+//                radius 4), 24 px below the row top; the two inner columns
+//                start 162 px below the row top: 50 icon · 8 · white image
+//                200×120 r8 · 15 · green card 200×156 r20.
+// All values are Figma px × k (k = live content width / 1144).
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _TabletCards extends StatelessWidget {
@@ -256,245 +266,207 @@ class _TabletCards extends StatelessWidget {
   final Color         bgColor;
   const _TabletCards({required this.data, required this.bgColor});
 
+  static const double _contentW = 1144;
+
   @override
   Widget build(BuildContext context) {
-    final double cardW  = 155.4.w;
-    final double imageH = 179.3.h;
     final sec     = data.sections;
     final isRtl   = context.read<LanguageCubit>().state.isArabic;
     final primary = _sectionColor(data.branding.primaryColor);
 
     String secDesc(int i) => i < sec.length
         ? (isRtl
-        ? (sec[i].description.ar.isNotEmpty
-        ? sec[i].description.ar
-        : sec[i].description.en)
-        : sec[i].description.en)
+            ? (sec[i].description.ar.isNotEmpty
+                ? sec[i].description.ar
+                : sec[i].description.en)
+            : sec[i].description.en)
         : '';
-
+    String secIcon(int i)  => i < sec.length ? sec[i].iconUrl  : '';
+    String secImage(int i) => i < sec.length ? sec[i].imageUrl : '';
     // ✅ Check section visibility from Firestore
     bool secVisible(int i) => i < sec.length ? sec[i].visibility : true;
 
-    return Container(
-      color:   bgColor,
-      padding: EdgeInsets.symmetric(horizontal: 19.1.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ✅ Section 0 image+icon (top-left)
-              Visibility(
-                visible: secVisible(0),
-                maintainSize: true, maintainAnimation: true, maintainState: true,
-                child: _Reveal(
-                  delay:     const Duration(milliseconds: 100),
-                  direction: _SlideDirection.fromLeft,
-                  duration:  const Duration(milliseconds: 650),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: cardW,
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: _CircleIcon(
-                              iconUrl:   sec.isNotEmpty ? sec[0].iconUrl : '',
-                              iconColor: primary),
-                        ),
-                      ),
-                      SizedBox(height: 7.2.h),
-                      _SectionImage(
-                          imageUrl: sec.isNotEmpty ? sec[0].imageUrl : '',
-                          width:    cardW,
-                          height:   imageH),
-                    ],
-                  ),
-                ),
-              ), // ✅ closes Visibility for section 0
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(height: 43.w + 7.2.h),
-                    // BUG-124: tablets showed only 2 of the 5 quick links.
-                    ...data.navButtons
-                        .where((btn) => btn.status)
-                        .toList()
-                        .asMap()
-                        .entries
-                        .map((e) {
-                      final btn   = e.value;
-                      final label = isRtl
-                          ? (btn.name.ar.isNotEmpty
-                          ? btn.name.ar
-                          : btn.name.en)
-                          : btn.name.en;
-                      return Padding(
-                        padding: EdgeInsets.only(bottom: 14.3.h),
-                        child: _Reveal(
-                          delay: Duration(
-                              milliseconds: 150 + e.key * 80),
-                          direction: _SlideDirection.fromBottom,
-                          duration:
-                          const Duration(milliseconds: 600),
-                          child: _CmsNavBtn(
-                            label:       label,
-                            route:       btn.route,
-                            primary:     primary,
-                            isRtl:       isRtl,
-                            highlighted: e.key == 0, // BUG-180
-                          ),
-                        ),
-                      );
-                    }),
-                  ],
-                ),
-              ),
-              SizedBox(width: 12.w),
-              // ✅ Section 3 image+icon (top-right)
-              Visibility(
-                visible: secVisible(3),
-                maintainSize: true, maintainAnimation: true, maintainState: true,
-                child: _Reveal(
-                  delay:     const Duration(milliseconds: 100),
-                  direction: _SlideDirection.fromRight,
-                  duration:  const Duration(milliseconds: 650),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: cardW,
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: _CircleIcon(
-                              iconUrl:   sec.length > 3 ? sec[3].iconUrl : '',
-                              iconColor: primary),
-                        ),
-                      ),
-                      SizedBox(height: 7.2.h),
-                      _SectionImage(
-                          imageUrl: sec.length > 3 ? sec[3].imageUrl : '',
-                          width:    cardW,
-                          height:   imageH),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12.h),
+    final double contentW = _SiteLayout.contentWidth(context);
+    final double k        = contentW / _contentW;
 
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+    // Figma column widths / gaps.
+    final double outerW = 300 * k;
+    final double innerW = 200 * k;
+    final double gap    = 15 * k;
+    final double iconD  = 50 * k;
+
+    Widget hide(int i, Widget child) => Visibility(
+          visible: secVisible(i),
+          maintainSize: true,
+          maintainAnimation: true,
+          maintainState: true,
+          child: child,
+        );
+
+    // ── Outer column (sections 0 and 3) ──────────────────────────────────────
+    Widget outer(int i, {required bool iconAtEnd, required _SlideDirection dir}) =>
+        hide(i, _Reveal(
+          delay:     const Duration(milliseconds: 100),
+          direction: dir,
+          duration:  const Duration(milliseconds: 650),
+          child: SizedBox(
+            width: outerW,
+            child: Column(
+              mainAxisSize:       MainAxisSize.min,
+              // Icon sits on the column's inner edge (right on the left
+              // column, left on the right one) — fixed for AR and EN.
+              crossAxisAlignment:
+                  iconAtEnd ? CrossAxisAlignment.start : CrossAxisAlignment.end,
               children: [
-                // ✅ Section 0 green card
-                Visibility(
-                  visible: secVisible(0),
-                  maintainSize: true, maintainAnimation: true, maintainState: true,
-                  child: _Reveal(
-                    delay:     const Duration(milliseconds: 120),
-                    direction: _SlideDirection.fromBottom,
-                    duration:  const Duration(milliseconds: 650),
-                    child: _GreenCard(
-                      width:    cardW,
-                      text:     secDesc(0),
-                      color:    primary,
-                      fontSize: 13.1.sp,
-                      isRtl:    isRtl,
-                    ),
-                  ),
-                ),
-                SizedBox(width: 12.w),
-                // ✅ Section 1 column
-                Expanded(
-                  child: Visibility(
-                    visible: secVisible(1),
-                    maintainSize: true, maintainAnimation: true, maintainState: true,
-                    child: _Reveal(
-                      delay:     const Duration(milliseconds: 200),
-                      direction: _SlideDirection.fromBottom,
-                      duration:  const Duration(milliseconds: 650),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _CircleIcon(
-                              iconUrl:   sec.length > 1 ? sec[1].iconUrl : '',
-                              iconColor: primary),
-                          SizedBox(height: 7.2.h),
-                          _SectionImage(
-                              imageUrl: sec.length > 1 ? sec[1].imageUrl : '',
-                              height:   imageH * 0.6),
-                          SizedBox(height: 7.2.h),
-                          _GreenCard(
-                            text:     secDesc(1),
-                            color:    primary,
-                            fontSize: 13.1.sp,
-                            isRtl:    isRtl,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 12.w),
-                // ✅ Section 2 column
-                Expanded(
-                  child: Visibility(
-                    visible: secVisible(2),
-                    maintainSize: true, maintainAnimation: true, maintainState: true,
-                    child: _Reveal(
-                      delay:     const Duration(milliseconds: 280),
-                      direction: _SlideDirection.fromBottom,
-                      duration:  const Duration(milliseconds: 650),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _CircleIcon(
-                              iconUrl:   sec.length > 2 ? sec[2].iconUrl : '',
-                              iconColor: primary),
-                          SizedBox(height: 7.2.h),
-                          _SectionImage(
-                              imageUrl: sec.length > 2 ? sec[2].imageUrl : '',
-                              height:   imageH * 0.6),
-                          SizedBox(height: 7.2.h),
-                          _GreenCard(
-                            text:     secDesc(2),
-                            color:    primary,
-                            fontSize: 13.1.sp,
-                            isRtl:    isRtl,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 12.w),
-                // ✅ Section 3 green card
-                Visibility(
-                  visible: secVisible(3),
-                  maintainSize: true, maintainAnimation: true, maintainState: true,
-                  child: _Reveal(
-                    delay:     const Duration(milliseconds: 120),
-                    direction: _SlideDirection.fromBottom,
-                    duration:  const Duration(milliseconds: 650),
-                    child: _GreenCard(
-                      width:    cardW,
-                      text:     secDesc(3),
-                      color:    primary,
-                      fontSize: 13.1.sp,
-                      isRtl:    isRtl,
-                    ),
-                  ),
+                _CircleIcon(iconUrl: secIcon(i), iconColor: primary, size: iconD),
+                SizedBox(height: 8 * k),
+                _SectionImage(
+                    imageUrl: secImage(i),
+                    width:    outerW,
+                    height:   154 ,
+                    radius:   8 * k),
+                SizedBox(height: 8 * k),
+                _GreenCard(
+                  width:     outerW,
+                  minHeight: 156 * k,
+                  text:      secDesc(i),
+                  color:     primary,
+                  isRtl:     isRtl,
+                  k:         k,
                 ),
               ],
             ),
           ),
-          SizedBox(height: 28.7.h),
+        ));
+
+    // ── Inner column (sections 1 and 2) ──────────────────────────────────────
+    Widget inner(int i, {required bool iconAtEnd}) => hide(i, _Reveal(
+          delay:     const Duration(milliseconds: 180),
+          direction: _SlideDirection.fromBottom,
+          duration:  const Duration(milliseconds: 650),
+          child: SizedBox(
+            width: innerW,
+            child: Column(
+              mainAxisSize:       MainAxisSize.min,
+              crossAxisAlignment:
+                  iconAtEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+                _CircleIcon(iconUrl: secIcon(i), iconColor: primary, size: iconD),
+                SizedBox(height: 8 * k),
+                _SectionImage(
+                    imageUrl: secImage(i),
+                    width:    innerW,
+                    height:   120 ,
+                    radius:   8 * k),
+                SizedBox(height: 15 * k),
+                _GreenCard(
+                  width:     innerW,
+                  minHeight: 156 * k,
+                  text:      secDesc(i),
+                  color:     primary,
+                  isRtl:     isRtl,
+                  k:         k,
+                ),
+              ],
+            ),
+          ),
+        ));
+
+    // ── Quick links ──────────────────────────────────────────────────────────
+    final buttons = data.navButtons.where((btn) => btn.status).toList();
+    // Figma: pill 297, then 258 / 228 / 212 (inverted pyramid).
+    const List<double> widths = [297, 258, 228, 212, 196, 180];
+    final double btnH   = math.max(34 * k, 36);  // keep a usable tap target
+    final double btnGap = 10 * k;
+
+    final Widget links = Column(
+      mainAxisSize:       MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        for (int index = 0; index < buttons.length; index++)
+          Padding(
+            padding: EdgeInsets.only(
+                bottom: index == buttons.length - 1 ? 0 : btnGap),
+            child: _Reveal(
+              delay:     Duration(milliseconds: 150 + index * 80),
+              direction: _SlideDirection.fromBottom,
+              duration:  const Duration(milliseconds: 600),
+              child: SizedBox(
+                width: (index < widths.length ? widths[index] : widths.last) * k,
+                child: _CmsNavBtn(
+                  label: isRtl
+                      ? (buttons[index].name.ar.isNotEmpty
+                          ? buttons[index].name.ar
+                          : buttons[index].name.en)
+                      : buttons[index].name.en,
+                  route:       buttons[index].route,
+                  primary:     primary,
+                  isRtl:       isRtl,
+                  highlighted: index == 0, // BUG-180
+                  height:      btnH,
+                  minHeight:   36,
+                  fontSize:    math.max(13.0, 16 * k),
+                  radius:      4 * k,
+                  hPadding:    20 * k,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+
+    // Links start 24 px below the row top; the inner columns 162 px below it
+    // (their icons share the last link's band by 28 px). With more than four
+    // links the inner columns move down instead of running under them.
+    final int    n      = buttons.length;
+    final double linksH = n == 0 ? 0 : n * btnH + (n - 1) * btnGap;
+    final double linksTop = 24 * k;
+    final double innerTop =
+        math.max(162 * k, linksTop + linksH - 28 * k);
+
+    final double middleW = contentW - 2 * outerW - 2 * gap; // Figma 514
+
+    final Widget middle = SizedBox(
+      width: middleW,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(top: innerTop),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment:  MainAxisAlignment.spaceBetween,
+              children: [
+                inner(1, iconAtEnd: false),
+                inner(2, iconAtEnd: true),
+              ],
+            ),
+          ),
+          Positioned(
+            top: linksTop, left: 0, right: 0,
+            child: Center(child: links),
+          ),
         ],
+      ),
+    );
+
+    return Container(
+      color:     bgColor,
+      // Figma: 65 px from the lowest card to the footer (footer adds 40).
+      padding:   EdgeInsets.only(bottom: 25 * k),
+      alignment: Alignment.topCenter,
+      child: SizedBox(
+        width: contentW,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            outer(0, iconAtEnd: true,  dir: _SlideDirection.fromLeft),
+            SizedBox(width: gap),
+            middle,
+            SizedBox(width: gap),
+            outer(3, iconAtEnd: false, dir: _SlideDirection.fromRight),
+          ],
+        ),
       ),
     );
   }

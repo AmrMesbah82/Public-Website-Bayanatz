@@ -18,6 +18,7 @@ class _Reveal extends StatefulWidget {
 }
 
 class _RevealState extends State<_Reveal> with SingleTickerProviderStateMixin {
+  _RevealCoordinatorState? _coordinator;
   late final AnimationController _ctrl;
   late final Animation<double>   _opacity;
   late final Animation<Offset>   _slide;
@@ -51,12 +52,20 @@ class _RevealState extends State<_Reveal> with SingleTickerProviderStateMixin {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _RevealCoordinator.of(context)?.register(this);
+    // Keep the coordinator: dispose() must not look up ancestors (Flutter
+    // throws "Looking up a deactivated widget's ancestor is unsafe").
+    final coord = _RevealCoordinator.of(context);
+    if (!identical(coord, _coordinator)) {
+      _coordinator?.unregister(this);
+      _coordinator = coord;
+    }
+    _coordinator?.register(this);
   }
 
   @override
   void dispose() {
-    _RevealCoordinator.of(context)?.unregister(this);
+    _coordinator?.unregister(this);
+    _coordinator = null;
     _ctrl.dispose();
     super.dispose();
   }
@@ -138,29 +147,10 @@ const List<Map<String, String>> _phoneCodes = [
 // SVG PRELOADER
 // ═══════════════════════════════════════════════════════════════════════════════
 
-Future<void> _preloadSvgImages(List<String> urls) async {
-  final ts = DateTime.now().millisecondsSinceEpoch;
-  final validUrls = urls
-      .where((url) =>
-  url.isNotEmpty &&
-      (url.startsWith('http://') || url.startsWith('https://')))
-      .toSet()
-      .toList();
-
-  await Future.wait(
-    validUrls.map((url) async {
-      // Bust cache by appending timestamp
-      final bustUrl = url.contains('?')
-          ? '$url&_t=$ts'
-          : '$url?_t=$ts';
-      final loader = SvgNetworkLoader(bustUrl);
-      await svg.cache.putIfAbsent(
-        loader.cacheKey(null),
-            () => loader.loadBytes(null),
-      ).catchError((_) => null);
-    }),
-  );
-}
+Future<void> _preloadSvgImages(List<String> urls) =>
+    // Safe preload: broken/non-SVG files are skipped quietly (no uncaught
+    // XmlParserException) — see core/utils/svg_preload.dart.
+    SvgPreload.preload(urls);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SVG PULSE LOADER

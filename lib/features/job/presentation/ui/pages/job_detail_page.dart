@@ -6,6 +6,7 @@
 // FIXED: Removed duplicate bullets in Requirements/Preferred Skills sections
 // ═══════════════════════════════════════════════════════════════════
 
+import 'package:website_app/core/custom/circle_progress.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -291,7 +292,7 @@ class _JobDetailPageState extends State<JobDetailPage> {
         if (_loading) {
           return Scaffold(
             backgroundColor: bgColor,
-            body: Center(child: CircularProgressIndicator(color: primary)),
+            body: const CircleProgress(),
           );
         }
 

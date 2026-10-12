@@ -136,7 +136,15 @@ String jobLocation(BuildContext context, String en, bool ar) {
 class JobSkillChip extends StatelessWidget {
   final String label;
   final bool compact;
-  const JobSkillChip({super.key, required this.label, this.compact = false});
+
+  /// Reduce the font by this many px (the Jobs list page uses 2).
+  final double fontDelta;
+  const JobSkillChip({
+    super.key,
+    required this.label,
+    this.compact = false,
+    this.fontDelta = 0,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +167,7 @@ class JobSkillChip extends StatelessWidget {
       child: Text(
         label,
         style: StyleText.fontSize14Weight500.copyWith(
-          fontSize: mobile ? 13 : (compact ? 14.sp : 20.sp),
+          fontSize: (mobile ? 13.0 : (compact ? 14.sp : 20.sp)) - fontDelta,
           fontWeight: FontWeight.w500,
           color: const Color(0xFF666666),
           height: 1.3,
@@ -174,12 +182,16 @@ class JobSkillsRow extends StatelessWidget {
   final List<String> skills;
   final TextStyle labelStyle;
   final bool compact;
+
+  /// Passed to every chip — reduce the chip font by this many px.
+  final double chipFontDelta;
   const JobSkillsRow({
     super.key,
     required this.label,
     required this.skills,
     required this.labelStyle,
     this.compact = false,
+    this.chipFontDelta = 0,
   });
 
   @override
@@ -201,7 +213,8 @@ class JobSkillsRow extends StatelessWidget {
             runSpacing: 8,
             children: [
               for (final sk in skills)
-                if (sk.trim().isNotEmpty) JobSkillChip(label: sk, compact: compact),
+                if (sk.trim().isNotEmpty) JobSkillChip(
+                    label: sk, compact: compact, fontDelta: chipFontDelta),
             ],
           ),
         ),

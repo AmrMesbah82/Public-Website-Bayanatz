@@ -8,6 +8,7 @@
 //          All rendered text is passed through FormatHelper.capitalize.
 //          BLOG IMAGE: SVG-only — no Image.network fallback ✅
 
+import 'package:website_app/core/custom/circle_progress.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -133,7 +134,7 @@ class _BlogDetailPageState extends State<BlogDetailPage> {
                       body: Column(
                         children: [
                           AppNavbar(currentRoute: '/services'),
-                          Expanded(child: Center(child: CircularProgressIndicator(color: primary))),
+                          const Expanded(child: CircleProgress()),
                           const AppFooter(),
                         ],
                       ),

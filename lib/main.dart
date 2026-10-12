@@ -111,9 +111,11 @@ class BayanatzApp extends StatelessWidget {
             BlocProvider<ContactCubit>(
               create: (_) => ContactCubit(),
             ),
+            // Lazy: created + loaded the first time Contact Us is opened.
             BlocProvider<ContactUsCmsCubit>(
               create: (_) => ContactUsCmsCubit()..load(),
             ),
+            // Lazy: created + loaded the first time Careers is opened.
             BlocProvider<CareersCmsCubit>(
               create: (_) => CareersCmsCubit(
                 jobRepo: JobListingRepoImpl(),

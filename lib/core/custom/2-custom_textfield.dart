@@ -138,6 +138,8 @@ class CustomTextField extends StatefulWidget {
 
   final TextStyle? valueStyle;
   final TextStyle? hintStyle;
+  /// Placeholder font size. Null (default) = same size as the typed value.
+  final double? hintFontSize;
   final TextStyle? labelStyle;
   final TextStyle? errorStyle;
   final TextStyle? helperStyle;
@@ -213,6 +215,7 @@ class CustomTextField extends StatefulWidget {
     this.contentPadding,
     this.valueStyle,
     this.hintStyle,
+    this.hintFontSize,
     this.labelStyle,
     this.errorStyle,
     this.helperStyle,
@@ -337,40 +340,66 @@ class _CustomTextFieldState extends State<CustomTextField> {
     super.dispose();
   }
 
-  /// One-line field: the surrounding Container paints the box, so the
-  /// InputDecoration itself is transparent, borderless and unpadded.
-  InputDecoration _boxed(InputDecoration d) => _fillsHeight
-      ? d.copyWith(
-          // QA-Oct11: the value sat ~5 px LOWER than the dropdown text next
-          // to it — the InputDecorator added its own offset (dense layout +
-          // an empty counter row). Collapsed = the input is only the text
-          // line, centred by the Container exactly like a dropdown's Text.
-          isCollapsed: true,
-          filled: false,
-          contentPadding: EdgeInsets.zero,
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          disabledBorder: InputBorder.none,
-          errorBorder: InputBorder.none,
-          focusedErrorBorder: InputBorder.none,
-        )
-      : d;
 
-  /// One-line field: value + hint vertically centred in the 36.sp box.
-  ///
-  /// QA-Oct11: SiteField.centred (1.4 line box) works for a plain Text (the
-  /// dropdowns) but NOT inside a TextField on web — measured in the running
-  /// page: the line box was centred, yet the glyphs were drawn from its top
-  /// with Cairo's FULL ascent, so value + hint sat ~4 px low. Cairo's natural
-  /// line box (ascent 1.303 + descent 0.571 = 1.874 em) has zero leading, so
-  /// both renderers draw it the same way and the text lands on the middle.
-  TextStyle _centred(TextStyle s) => _fillsHeight
-      ? s.copyWith(
-          height: 1.874,
-          leadingDistribution: TextLeadingDistribution.even,
-        )
-      : s;
+  /// One-line field: value AND placeholder use exactly the same line box as
+  /// the dropdown text (SiteField.centred), so all three sit on the same
+  /// vertical middle. This works now that one-line fields no longer go
+  /// through InputDecorator (which added its own vertical offset on web —
+  /// the real reason text sat ~4 px low, whatever line height was used).
+  TextStyle _centred(TextStyle s) => _fillsHeight ? SiteField.centred(s) : s;
+
+  /// One-line field layout: the Container paints the box; inside it the
+  /// input and the placeholder are two plain text lines stacked on top of
+  /// each other and centred vertically by the same Align. No InputDecorator,
+  /// no content padding, no baseline juggling → text is centred within the
+  /// real field height, and placeholder == typed text alignment.
+  Widget _singleLine(
+    Widget input, {
+    required TextStyle valueStyle,
+    required TextStyle hintStyle,
+    Widget? prefix,
+    Widget? suffix,
+  }) {
+    final StrutStyle strut =
+        StrutStyle.fromTextStyle(valueStyle, forceStrutHeight: true);
+    // Placeholder uses the value's font size so both share one line box.
+    final TextStyle hint = hintStyle.copyWith(
+        fontSize: widget.hintFontSize ?? valueStyle.fontSize);
+    final Widget body = Stack(
+      alignment: AlignmentDirectional.centerStart,
+      children: [
+        if ((widget.hint ?? '').isNotEmpty)
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _controller,
+            builder: (_, v, __) => v.text.isEmpty
+                ? IgnorePointer(
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: Text(
+                        widget.hint!,
+                        style: hint,
+                        strutStyle: strut,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: widget.textAlign,
+                        textDirection: widget.textDirection,
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        input,
+      ],
+    );
+    if (prefix == null && suffix == null) return body;
+    return Row(
+      children: [
+        if (prefix != null) ...[prefix, SizedBox(width: 8.w)],
+        Expanded(child: body),
+        if (suffix != null) ...[SizedBox(width: 8.w), suffix],
+      ],
+    );
+  }
 
   /// One-line field with a fixed height → fills that height (see TextField).
   bool get _fillsHeight =>
@@ -441,6 +470,32 @@ class _CustomTextFieldState extends State<CustomTextField> {
   // Effective obscure: only applies when the prop is true AND not multiline
   bool get _effectiveObscure =>
       widget.obscureText && !_isMultiline && _obscured;
+
+  TextStyle _valueStyle(bool isDisabled) =>
+      widget.valueStyle ??
+      StyleText.fontSize14Weight400.copyWith(
+        color: isDisabled ? AppColors.text.withOpacity(0.4) : AppColors.text,
+      );
+
+  TextStyle _hintStyle() =>
+      widget.hintStyle ??
+      StyleText.fontSize18Weight500.copyWith(color: SiteColors.placeholder);
+
+  /// Wraps the TextField in the one-line layout when [_fillsHeight].
+  Widget _maybeSingleLine(
+    Widget field, {
+    required TextStyle valueStyle,
+    required TextStyle hintStyle,
+    Widget? prefix,
+    Widget? suffix,
+  }) =>
+      _fillsHeight
+          ? _singleLine(field,
+              valueStyle: valueStyle,
+              hintStyle: hintStyle,
+              prefix: prefix,
+              suffix: suffix)
+          : field;
 
   @override
   Widget build(BuildContext context) {
@@ -535,7 +590,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
             // BUG-257: the input is announced by its label, not "Text Here".
             child: Semantics(
               label: widget.semanticsLabel ?? widget.label,
-              child: TextField(
+              child: _maybeSingleLine(TextField(
 
               controller: _controller,
               focusNode: _focusNode,
@@ -575,12 +630,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
               onChanged: widget.onChanged,
               onSubmitted: widget.onSubmitted,
               onTap: widget.onTap,
-              style: _centred(widget.valueStyle ??
-                  StyleText.fontSize14Weight400.copyWith(
-                    color: isDisabled
-                        ? AppColors.text.withOpacity(0.4)
-                        : AppColors.text,
-                  )),
+              style: _centred(_valueStyle(isDisabled)),
               // NEVER show the built-in counter (app-wide rule)
               buildCounter: _effectiveMaxLength != null
                   ? (_,
@@ -592,18 +642,17 @@ class _CustomTextFieldState extends State<CustomTextField> {
               // A one-line field with a fixed height fills that WHOLE height
               // (text centred), exactly like the dropdowns next to it — before,
               // only the text line was painted and the box looked shorter.
-              textAlignVertical:
-                  _fillsHeight ? TextAlignVertical.center : null,
+              textAlignVertical: null,
               // QA-Oct11: value + hint share ONE fixed line box (the same as
               // the dropdown Text), so both sit on the box's middle.
               strutStyle: _fillsHeight
                   ? StrutStyle.fromTextStyle(
-                      _centred(widget.valueStyle ??
-                          StyleText.fontSize14Weight400),
+                      _centred(_valueStyle(isDisabled)),
                       forceStrutHeight: true,
                     )
                   : null,
-              decoration: _boxed(InputDecoration(
+              // One-line fields have NO InputDecorator (see _singleLine).
+              decoration: _fillsHeight ? null : InputDecoration(
                 isDense: true,
                 contentPadding: EdgeInsets.symmetric(horizontal: 12.sp , vertical: 20.sp),
                 filled: true,
@@ -657,10 +706,10 @@ class _CustomTextFieldState extends State<CustomTextField> {
 
                 hintText: widget.hint,
                 // BUG-129 / BUG-136: readable placeholder (≥ 4.5:1).
-                hintStyle: _centred(widget.hintStyle ??
+                hintStyle: _centred((widget.hintStyle ??
                     StyleText.fontSize18Weight500.copyWith(
                       color: SiteColors.placeholder,
-                    )),
+                    )).copyWith(fontSize: widget.hintFontSize)),
 
                 prefixIcon: widget.prefixIcon != null
                     ? Padding(
@@ -684,7 +733,12 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 errorText: null,
                 helperText: null,
                 counterText: '',
-              )),
+              ),
+            ),
+              valueStyle: _centred(_valueStyle(isDisabled)),
+              hintStyle: _centred(_hintStyle()),
+              prefix: widget.prefixIcon,
+              suffix: resolvedSuffix,
             ),
             ),
           ),

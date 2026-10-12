@@ -77,6 +77,8 @@ class _UrlValidatedTextFieldState extends State<_UrlValidatedTextField> {
         controller: widget.controller,
         height: 42,
         fillColor: Colors.white,
+        labelStyle: _jobLabelStyle(context),
+        hintFontSize: _jobHintSize(context),
         textDirection: TextDirection.ltr,
         textAlign: TextAlign.start,
         // Empty-field "required" error only when the admin flagged it required

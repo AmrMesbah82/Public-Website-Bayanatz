@@ -30,6 +30,10 @@ class _MobileTopTabItemState extends State<_MobileTopTabItem> {
   @override
   Widget build(BuildContext context) {
     final bool sel = widget.isSelected;
+    // Same as desktop: tile colour from Firebase (primary when active,
+    // secondary otherwise) → contrasting icon colour.
+    final Color tileColor = sel ? widget.primaryColor : widget.secondaryColor;
+    final Color iconColor = _onBrandColor(tileColor);
     // BUG-246: tab labels use the TAB token (15 px), not the page-title size;
     // BUG-214: light inactive tile; BUG-184: 2 px underline when active.
     return Semantics(
@@ -65,10 +69,7 @@ class _MobileTopTabItemState extends State<_MobileTopTabItem> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  // QA-Oct11 #3: unselected = selected tile at 50 %.
-                  color: sel
-                      ? widget.primaryColor
-                      : widget.primaryColor.withOpacity(0.5),
+                  color: tileColor,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Center(
@@ -76,7 +77,7 @@ class _MobileTopTabItemState extends State<_MobileTopTabItem> {
                     iconUrl: widget.iconUrl,
                     fallback: _kTopTabFallbackIcons[
                         widget.index.clamp(0, _kTopTabFallbackIcons.length - 1)],
-                    color: Colors.white,
+                    color: iconColor,
                     size: 26,
                   ),
                 ),
@@ -89,9 +90,7 @@ class _MobileTopTabItemState extends State<_MobileTopTabItem> {
                 style: StyleText.fontSize20Weight600.copyWith(
                   fontSize: 16,
                   height: 22 / 16,
-                  color: sel
-                      ? const Color(0xFF170F49)
-                      : SiteColors.description,
+                  color: sel ? widget.primaryColor : SiteColors.description,
                 ),
               ),
             ],

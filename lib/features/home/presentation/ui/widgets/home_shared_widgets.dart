@@ -31,8 +31,8 @@ class _CircleIcon extends StatelessWidget {
       child: ClipOval(
         child: _smartImage(
           url:         iconUrl,
-          width:       d * 0.56,
-          height:      d * 0.56,
+          width:       d * 0.96,
+          height:      d * 0.96,
           fit:         BoxFit.contain,
           colorFilter: iconColor,
           fallback:
@@ -166,7 +166,7 @@ class _GreenCard extends StatelessWidget {
       padding: EdgeInsets.all(k != null ? 15 * kk : 16),
       decoration: BoxDecoration(
         color:        color,
-        borderRadius: BorderRadius.circular(20 * kk),
+        borderRadius: BorderRadius.circular(8 * kk),
       ),
       child: Text(
         text,

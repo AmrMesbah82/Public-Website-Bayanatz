@@ -49,7 +49,10 @@ class _HeroSection extends StatelessWidget {
       padding: isMobile
           // Figma: title 70 px under the header, buttons 50 px under the subtitle.
           ? const EdgeInsets.fromLTRB(16, 60, 16, 50)
-          : EdgeInsets.only(left: 36.w, right: 36.w, top: 55.w), // Figma: "Bayanatz" 73 px under the header
+          // Figma: "Bayanatz" 73 px under the header on desktop, 70 px on
+          // the iPad vertical frame (1224).
+          : EdgeInsets.only(
+              left: 36.w, right: 36.w, top: w < _BP.tablet ? 52.w : 55.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [

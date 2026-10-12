@@ -91,7 +91,7 @@ class _ValueDetailPanel extends StatelessWidget {
         fullDesc = _ab(value.description, isRtl);
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(24.r),
+      padding: EdgeInsets.symmetric(horizontal: 10.sp),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15.r),
@@ -126,7 +126,7 @@ class _ValueDetailPanel extends StatelessWidget {
             Text(
               FormatHelper.capitalize(title),
               style: StyleText.fontSize14Weight700.copyWith(
-                fontSize: 22.sp,
+                fontSize: 16.sp,
                 fontWeight: FontWeight.w700,
                 color: primaryColor,
               ),
@@ -137,7 +137,7 @@ class _ValueDetailPanel extends StatelessWidget {
             Text(
               shortDesc,
               style: StyleText.fontSize12Weight500.copyWith(
-                fontSize: 17.sp,
+                fontSize: 14.sp,
                 fontWeight: FontWeight.w600,
                 color: SiteColors.textStrong,
                 height: 1.6,

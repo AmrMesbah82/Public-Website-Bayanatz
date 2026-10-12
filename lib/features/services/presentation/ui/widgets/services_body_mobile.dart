@@ -30,38 +30,66 @@ class _ServicesBodyMobile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _Reveal(
-            delay:     const Duration(milliseconds: 80),
-            direction: _SlideDirection.fromLeft,
-            duration:  const Duration(milliseconds: 600),
-            // Figma: Cairo SemiBold 20 / 150 % grey with the brand name in
-            // the primary colour.
-            child: _brandRich(
-              FormatHelper.capitalize(sectionTitle),
-              StyleText.fontSize14Weight700.copyWith(
-                fontSize: 20,
-                height: 1.5,
-                fontWeight: FontWeight.w600,
-                color: SiteColors.description,
-              ),
-              primaryColor,
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          ...model.journeyItems.asMap().entries.map((e) => _Reveal(
-            delay:     Duration(milliseconds: 100 + e.key * 90),
-            direction: _SlideDirection.fromBottom,
-            duration:  const Duration(milliseconds: 650),
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 16), // Figma 16
-              child: _ServiceCardMobile(
-                  item:           e.value,
-                  isRtl:          isRtl,
-                  primaryColor:   primaryColor,
-                  secondaryColor: secondaryColor),
-            ),
-          )),
+          // Only the first 4 services, then "See All" (same as desktop).
+          _ShowAllSection(builder: (context, showAll, toggle) {
+            final bool hasMore = model.journeyItems.length > _kServicesPreview;
+            final List<JourneyItemModel> items = hasMore && !showAll
+                ? model.journeyItems.take(_kServicesPreview).toList()
+                : model.journeyItems;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child:
+                      _Reveal(
+                        delay:     const Duration(milliseconds: 80),
+                        direction: _SlideDirection.fromLeft,
+                        duration:  const Duration(milliseconds: 600),
+                        // Cairo SemiBold 20 / 150 % — one plain text, primary colour.
+                        child: Text(
+                          FormatHelper.capitalize(sectionTitle),
+                          style: StyleText.fontSize14Weight700.copyWith(
+                            fontSize: 20,
+                            height: 1.5,
+                            fontWeight: FontWeight.w600,
+                            color: primaryColor,
+                          ),
+                        ),
+                      )
+                    ),
+                    if (hasMore) ...[
+                      const SizedBox(width: 10),
+                      _SeeAllButton(
+                        showAll: showAll,
+                        isRtl: isRtl,
+                        primaryColor: primaryColor,
+                        onTap: toggle,
+                        fontSize: 13,
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ...items.asMap().entries.map((e) => _Reveal(
+                delay:     Duration(milliseconds: 100 + e.key * 90),
+                direction: _SlideDirection.fromBottom,
+                duration:  const Duration(milliseconds: 650),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 16), // Figma 16
+                  child: _ServiceCardMobile(
+                      item:           e.value,
+                      isRtl:          isRtl,
+                      primaryColor:   primaryColor,
+                      secondaryColor: secondaryColor),
+                ),
+              )),
+              ],
+            );
+          }),
           const SizedBox(height: 24),
 
           _Reveal(
@@ -95,21 +123,6 @@ class _ServicesBodyMobile extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Shows the brand name ("Bayanatz" / "بيانات زي") inside [text] in the
-/// primary colour (Figma iPhone "Reasons to Choose …" heading).
-Widget _brandRich(String text, TextStyle base, Color primary) {
-  final RegExp brand = RegExp(r'Bayanatz|بيانات زي');
-  final spans = <TextSpan>[];
-  int last = 0;
-  for (final m in brand.allMatches(text)) {
-    if (m.start > last) spans.add(TextSpan(text: text.substring(last, m.start)));
-    spans.add(TextSpan(text: m.group(0), style: TextStyle(color: primary)));
-    last = m.end;
-  }
-  if (last < text.length) spans.add(TextSpan(text: text.substring(last)));
-  return Text.rich(TextSpan(style: base, children: spans));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -149,10 +162,7 @@ Widget _svgIconBox({
           placeholderBuilder: (_) => SizedBox(
             width:  size * 0.5,
             height: size * 0.5,
-            child: CircularProgressIndicator(
-              strokeWidth: 1.5,
-              color:       primaryColor,
-            ),
+            child: const CircleProgress(strokeWidth: 1.5, center: false),
           ),
         ),
       )

@@ -10,6 +10,7 @@
 //          PDF type → file upload box | Link type → URL text field
 // ═══════════════════════════════════════════════════════════════════
 
+import 'package:website_app/core/custom/circle_progress.dart';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -86,6 +87,18 @@ const int _kMaxPdfBytes = 10 * 1024 * 1024;
 
 // ── Bilingual helper (top-level, no context needed) ──────────────────────────
 String _t(String en, String ar, bool isRtl) => isRtl ? ar : en;
+
+// Phone (< 600): form field titles 12.sp, placeholders 10.sp.
+// Null on tablet / desktop → the shared field defaults are kept.
+bool _jobIsPhone(BuildContext c) => MediaQuery.sizeOf(c).width < 600;
+TextStyle? _jobLabelStyle(BuildContext c) => _jobIsPhone(c)
+    ? StyleText.fontSize14Weight400.copyWith(
+        fontSize: 12.sp,
+        fontWeight: FontWeight.w600,
+        color: SiteColors.textStrong,
+      )
+    : null;
+double? _jobHintSize(BuildContext c) => _jobIsPhone(c) ? 10.sp : null;
 
 const List<Map<String, String>> _kCountryCodes = [
   {'key': '+20', 'value': '🇪🇬 +20'},
@@ -595,7 +608,7 @@ class _JobApplyPageState extends State<JobApplyPage> {
             body: Column(
               children: [
                 AppNavbar(currentRoute: '/careers'),
-                Expanded(child: Center(child: CircularProgressIndicator(color: primary))),
+                const Expanded(child: CircleProgress()),
                 const AppFooter(),
               ],
             ),
@@ -832,6 +845,8 @@ class _JobApplyPageState extends State<JobApplyPage> {
             controller: _firstNameCtrl,
             height: 42,
             fillColor: Colors.white,
+            labelStyle: _jobLabelStyle(context),
+            hintFontSize: _jobHintSize(context),
             submitted: _formSubmitted,
           ),
           CustomTextField(
@@ -841,6 +856,8 @@ class _JobApplyPageState extends State<JobApplyPage> {
             controller: _lastNameCtrl,
             height: 42,
             fillColor: Colors.white,
+            labelStyle: _jobLabelStyle(context),
+            hintFontSize: _jobHintSize(context),
             submitted: _formSubmitted,
           ),
         ),
@@ -853,6 +870,8 @@ class _JobApplyPageState extends State<JobApplyPage> {
             controller: _emailCtrl,
             height: 42,
             fillColor: Colors.white,
+            labelStyle: _jobLabelStyle(context),
+            hintFontSize: _jobHintSize(context),
             submitted: _formSubmitted,
             keyboardType: TextInputType.emailAddress,
             errorText: _formSubmitted &&
@@ -886,6 +905,8 @@ class _JobApplyPageState extends State<JobApplyPage> {
             controller: _yearCtrl,
             height: 42,
             fillColor: Colors.white,
+            labelStyle: _jobLabelStyle(context),
+            hintFontSize: _jobHintSize(context),
             onlyDigits: true,
             maxLength: 4,
             submitted: _formSubmitted,
@@ -963,7 +984,8 @@ class _JobApplyPageState extends State<JobApplyPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // ── Label ── (BUG-128 / BUG-236)
-        requiredLabel(_docLabel(doc, isRtl), required: doc.isRequired),
+        requiredLabel(_docLabel(doc, isRtl),
+            required: doc.isRequired, style: _jobLabelStyle(context)),
         const SizedBox(height: 8),
         // ── Upload box ──
         Stack(
@@ -1051,6 +1073,7 @@ class _JobApplyPageState extends State<JobApplyPage> {
                     SizedBox(height: _isPhone ? 6 : 10.w),
                     // Figma: "Browse Files" 200×37, radius 10, Medium 20 white.
                     Container(
+                      width: MediaQuery.sizeOf(context).width*.3,
                       constraints: BoxConstraints(
                           minWidth: _isPhone ? 0 : 200.w,
                           minHeight: _isPhone ? 0 : 37.w),
@@ -1144,7 +1167,7 @@ class _JobApplyPageState extends State<JobApplyPage> {
     // BUG-239: disabled while sending. BUG-146: "Send" (Title Case, like the
     // Contact form). BUG-207: Figma 26 px label. BUG-257: focusable button.
     return SizedBox(
-      width: double.infinity,
+      width: MediaQuery.sizeOf(context).width*.4,
       height: _isPhone ? 52 : 57.w, // Figma 57
       child: ElevatedButton(
         onPressed: (_submitting || _inFlight) ? null : () => _submit(isRtl),
@@ -1158,7 +1181,9 @@ class _JobApplyPageState extends State<JobApplyPage> {
             ? const SizedBox(
                 width: 22,
                 height: 22,
-                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                // White: sits on the primary Send button.
+                child: CircleProgress(
+                    size: 22, strokeWidth: 2, color: Colors.white, center: false),
               )
             : Text(
                 _t('Send', 'إرسال', isRtl),

@@ -21,20 +21,27 @@ class DepartmentRepoImpl implements DepartmentRepo {
   @override
   Future<List<DepartmentModel>> fetchAllDepartments() async {
     try {
-      final snapshot = await _collection
-          .orderBy('createdAt', descending: true)
-          .get(const GetOptions(source: Source.server));
+      // No orderBy: Firestore silently drops documents that have no
+      // createdAt field from an orderBy query. Sort in memory instead.
+      final snapshot =
+          await _collection.get(const GetOptions(source: Source.server));
 
       final depts = snapshot.docs
           .map((doc) => DepartmentModel.fromMap(doc.id, doc.data()))
-          .toList();
+          .toList()
+        ..sort((a, b) => (b.createdAt ?? DateTime(0))
+            .compareTo(a.createdAt ?? DateTime(0)));
+      assert(() {
+        // ignore: avoid_print
+        print('🏷️ departments loaded: ${depts.map((d) => '${d.nameEn} → ${d.nameAr.isEmpty ? '(no Arabic name)' : d.nameAr}').join(' | ')}');
+        return true;
+      }());
 
       return depts;
     } catch (e) {
       try {
-        final snapshot = await _collection
-            .orderBy('createdAt', descending: true)
-            .get(const GetOptions(source: Source.cache));
+        final snapshot =
+            await _collection.get(const GetOptions(source: Source.cache));
         return snapshot.docs
             .map((doc) => DepartmentModel.fromMap(doc.id, doc.data()))
             .toList();

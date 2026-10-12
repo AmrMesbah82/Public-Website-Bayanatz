@@ -31,6 +31,11 @@ class DepartmentCubit extends Cubit<DepartmentState> {
       _allDepartments = await _repo.fetchAllDepartments();
       emit(DepartmentLoaded(_allDepartments));
     } catch (e) {
+      assert(() {
+        // ignore: avoid_print
+        print('❌ departments failed to load: $e');
+        return true;
+      }());
       emit(DepartmentError('Failed to load: $e', lastDepartments: _allDepartments));
     }
   }

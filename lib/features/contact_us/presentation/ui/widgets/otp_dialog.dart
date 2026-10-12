@@ -375,10 +375,10 @@ class _OtpDialogState extends State<_OtpDialog> {
                             height: 18,
                             width:  18,
                             child:
-                            CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
+                            // White: sits on the primary button.
+                            const CircleProgress(
+                              size: 18, strokeWidth: 2,
+                              color: Colors.white, center: false),
                           )
                               : Text(
                             verifyBtn,

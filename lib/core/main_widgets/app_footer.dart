@@ -6,6 +6,7 @@
 // Description: AppFooter driven by HomePageModel via HomeCmsCubit.
 // Created by: Amr Mesbah
 
+import 'package:website_app/core/utils/svg_preload.dart';
 import 'package:flutter/material.dart';
 import '../widgets/smart_network_image.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -20,7 +21,6 @@ import '../../features/home/presentation/controller/home_cubit.dart';
 import '../../features/home/presentation/controller/home_state.dart';
 import '../../features/home/presentation/controller/lang_state.dart';
 import '../theme/app_wight.dart';
-import '../theme/appcolors.dart';
 import '../theme/new_theme.dart';
 import '../responsive/site_layout.dart';
 
@@ -186,23 +186,19 @@ class AppFooter extends StatelessWidget {
             final bool isRtl = langState.isArabic;
             final double screenWidth = MediaQuery.of(context).size.width;
 
-            Widget footer;
-            if (screenWidth >= _BP.tablet) {
-              footer = _FooterDesktop(
-                model: model, columns: columns,
-                primary: primary, footerBg: footerBg, isRtl: isRtl,
-              );
-            } else if (screenWidth >= _BP.mobile) {
-              footer = _FooterTablet(
-                model: model, columns: columns,
-                primary: primary, footerBg: footerBg, isRtl: isRtl,
-              );
-            } else {
-              footer = _FooterMobile(
-                model: model, columns: columns,
-                primary: primary, footerBg: footerBg, isRtl: isRtl,
-              );
-            }
+            // Phones (< 600) use the iPhone footer (icons between lines,
+            // Terms link, copyright); tablet + desktop share the responsive
+            // desktop design.
+            final Widget footer = screenWidth < _BP.mobile
+                ? _FooterMobile(
+                    model: model, columns: columns,
+                    primary: primary, footerBg: footerBg, isRtl: isRtl,
+                  )
+                : _FooterDesktop(
+                    model: model, columns: columns,
+                    primary: primary, footerBg: footerBg, isRtl: isRtl,
+                    screenWidth: screenWidth,
+                  );
 
             return Directionality(
               textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
@@ -223,6 +219,7 @@ class _FooterDesktop extends StatelessWidget {
   final Color primary;
   final Color footerBg; // ✅ from branding.headerFooterColor
   final bool isRtl;
+  final double screenWidth;
 
   const _FooterDesktop({
     required this.model,
@@ -230,6 +227,7 @@ class _FooterDesktop extends StatelessWidget {
     required this.primary,
     required this.footerBg,
     required this.isRtl,
+    required this.screenWidth,
   });
 
   @override
@@ -239,19 +237,113 @@ class _FooterDesktop extends StatelessWidget {
     // (30, 30); the five link columns span x 150 → 1295 with equal gaps;
     // a 1 px primary line at y 183 (x 145 → 1295); social icons 40×40
     // centred under it, copyright Regular 18 ending 50 px from the edge.
-    final double cardW = SiteLayout.contentWidth(context) + 40.w;
+    //
+    // RESPONSIVE (same design on every screen):
+    //  • wide (≥ 1024): exactly the Figma desktop layout.
+    //  • narrower: same card, logo, link columns, line, icons, copyright —
+    //    the columns WRAP onto more lines instead of squeezing, the logo
+    //    sits above the columns on phones, and the icons + copyright stack
+    //    (centred) when there is no room for them side by side.
+    final bool wide  = screenWidth >= _BP.tablet;
+    final bool phone = screenWidth < _BP.mobile;
+    final double gutter = phone ? 16 : 20;
+    final double cardW = wide
+        ? SiteLayout.contentWidth(context) + 40.w
+        : screenWidth - gutter * 2;
+    final double sidePad  = wide ? 145.w : gutter;
+    final double startPad = wide ? 30.w : gutter;
+    final double logoSize = wide ? 74 : (phone ? 56 : 64);
+
+    final Widget logo = _LogoBox(
+        logoUrl: model.branding.logoUrl, primary: primary, size: logoSize);
+
+    Widget column(FooterColumnModel col) => _FooterColumnWidget(
+          column:     col,
+          titleColor: const Color(0xFF2D2D2D),
+          primary:    primary,
+          isRtl:      isRtl,
+        );
+
+    final Widget links = wide
+        ? Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              for (final col in columns) Flexible(child: column(col)),
+            ],
+          )
+        : !phone
+        // Tablet: ALL columns on ONE line. Each column is only as wide as
+        // its own text; the remaining space is divided equally BETWEEN the
+        // columns (no fixed column width). Flexible lets a column shrink and
+        // wrap its labels only if the line is really too short.
+        ? Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              for (int i = 0; i < columns.length; i++) ...[
+                if (i > 0) const SizedBox(width: 8), // minimum gap
+                Flexible(child: column(columns[i])),
+              ],
+            ],
+          )
+        // Phones: the columns flow side by side and only start a new line
+        // when the current one is full.
+        : Wrap(
+            spacing: phone ? 24 : 40,
+            runSpacing: phone ? 20 : 24,
+            children: [
+              for (final col in columns)
+                ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: phone ? 130 : 150),
+                  child: column(col),
+                ),
+            ],
+          );
+
+    final Widget top = phone
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [logo, const SizedBox(height: 20), links],
+          )
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              logo,
+              SizedBox(width: wide ? 46.w : 20),
+              Expanded(child: links),
+            ],
+          );
+
+    final Widget icons = Wrap(
+      alignment: WrapAlignment.center,
+      // Figma gap 15 (each icon already has a 2 px focus margin).
+      spacing: 0,
+      runSpacing: 8,
+      children: _socialIcons(model.socialLinks, primary, gap: 11),
+    );
+    final Widget copyright = Text(
+      _staticCopyright(isRtl),
+      textAlign: wide ? TextAlign.end : TextAlign.center,
+      style: GoogleFonts.cairo(
+        color:      const Color(0xFF2D2D2D),
+        fontWeight: AppFontWeights.regular,
+        fontSize:   wide ? 18.sp : (phone ? 14 : 16),
+      ),
+    );
 
     return Padding(
-      padding: EdgeInsets.only(top: 40.w),
+      padding: EdgeInsets.only(top: wide ? 40.w : 32),
       child: Center(
         child: Container(
           width: cardW,
-          padding: EdgeInsetsDirectional.only(top: 30.w, bottom: 40.w),
+          padding: EdgeInsetsDirectional.only(
+              top: wide ? 30.w : gutter, bottom: wide ? 40.w : 28),
           decoration: BoxDecoration(
             color: footerBg, // CMS "Header and Footer" colour (white default)
             borderRadius: BorderRadiusDirectional.only(
-              topStart: Radius.circular(32.r),
-              topEnd:   Radius.circular(32.r),
+              topStart: Radius.circular(wide ? 32.r : 24),
+              topEnd:   Radius.circular(wide ? 32.r : 24),
             ),
           ),
           child: FocusTraversalGroup(
@@ -260,159 +352,52 @@ class _FooterDesktop extends StatelessWidget {
               children: [
                 ConstrainedBox(
                   // y 30 → 183 in Figma (logo 74, columns up to 99 tall).
-                  constraints: BoxConstraints(minHeight: 153.w),
+                  constraints: BoxConstraints(minHeight: wide ? 153.w : 0),
                   child: Padding(
-                    padding: EdgeInsetsDirectional.only(start: 30.w, end: 145.w),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _LogoBox(logoUrl: model.branding.logoUrl, primary: primary, size: 74),
-                        SizedBox(width: 46.w),
-                        Expanded(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              for (final col in columns)
-                                Flexible(
-                                  child: _FooterColumnWidget(
-                                    column:     col,
-                                    titleColor: const Color(0xFF2D2D2D),
-                                    primary:    primary,
-                                    isRtl:      isRtl,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                    padding: EdgeInsetsDirectional.only(
+                        start: startPad, end: sidePad),
+                    child: top,
                   ),
                 ),
+                SizedBox(height: wide ? 0 : 24),
                 Padding(
-                  padding: EdgeInsetsDirectional.only(start: 145.w, end: 145.w),
+                  padding: EdgeInsetsDirectional.only(
+                      start: sidePad, end: sidePad),
                   child: Divider(color: primary, thickness: 1, height: 1),
                 ),
-                SizedBox(height: 24.w),
+                SizedBox(height: wide ? 24.w : 20),
                 // BUG-166 / BUG-140: social icons centred on the card, the
                 // copyright at the end — separate slots, never overlapping.
-                Padding(
-                  padding: EdgeInsetsDirectional.only(end: 50.w),
-                  child: Row(
-                    children: [
-                      const Expanded(child: SizedBox()),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        // Figma gap 15 (each icon already has a 2 px focus margin).
-                        children: _socialIcons(model.socialLinks, primary, gap: 11),
-                      ),
-                      Expanded(
-                        child: Align(
-                          alignment: AlignmentDirectional.centerEnd,
-                          child: Text(
-                            _staticCopyright(isRtl),
-                            textAlign: TextAlign.end,
-                            style: GoogleFonts.cairo(
-                              color:      const Color(0xFF2D2D2D),
-                              fontWeight: AppFontWeights.regular,
-                              fontSize:   18.sp,
+                // Narrower: icons, then the copyright, both centred.
+                wide
+                    ? Padding(
+                        padding: EdgeInsetsDirectional.only(end: 50.w),
+                        child: Row(
+                          children: [
+                            const Expanded(child: SizedBox()),
+                            icons,
+                            Expanded(
+                              child: Align(
+                                alignment: AlignmentDirectional.centerEnd,
+                                child: copyright,
+                              ),
                             ),
-                          ),
+                          ],
+                        ),
+                      )
+                    : Padding(
+                        padding: EdgeInsets.symmetric(horizontal: gutter),
+                        child: Column(
+                          children: [
+                            icons,
+                            const SizedBox(height: 14),
+                            copyright,
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── TABLET ───────────────────────────────────────────────────────────────────
-
-class _FooterTablet extends StatelessWidget {
-  final HomePageModel model;
-  final List<FooterColumnModel> columns;
-  final Color primary;
-  final Color footerBg; // ✅ from branding.headerFooterColor
-  final bool isRtl;
-
-  const _FooterTablet({
-    required this.model,
-    required this.columns,
-    required this.primary,
-    required this.footerBg,
-    required this.isRtl,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final int mid  = (columns.length / 2).ceil();
-    final row1     = columns.sublist(0, mid);
-    final row2     = columns.sublist(mid);
-
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 19.1.w),
-      child: Container(
-        padding: EdgeInsets.all(23.9.sp),
-        decoration: BoxDecoration(
-          color: footerBg, // ✅ CMS-driven color
-          borderRadius: BorderRadiusDirectional.only(
-            topStart: Radius.circular(21.5.r),
-            topEnd:   Radius.circular(21.5.r),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _LogoBox(logoUrl: model.branding.logoUrl, primary: primary, size: 32),
-            SizedBox(height: 21.5.h),
-            Wrap(
-              spacing: 19.1.w, runSpacing: 19.1.h,
-              children: row1
-                  .map((col) => _FooterColumnWidget(
-                column: col, titleColor: AppColors.text,
-                primary: primary, isRtl: isRtl,
-              ))
-                  .toList(),
-            ),
-            if (row2.isNotEmpty) ...[
-              SizedBox(height: 19.1.h),
-              Wrap(
-                spacing: 19.1.w, runSpacing: 19.1.h,
-                children: row2
-                    .map((col) => _FooterColumnWidget(
-                  column: col, titleColor: AppColors.text,
-                  primary: primary, isRtl: isRtl,
-                ))
-                    .toList(),
-              ),
-            ],
-            SizedBox(height: 23.9.h),
-            Divider(color: primary, thickness: 1),
-            SizedBox(height: 14.3.h),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(children: _socialIcons(model.socialLinks, primary, gap: 8)),
-                Flexible(
-                  child: Text(
-                    _staticCopyright(isRtl),
-                    textAlign: TextAlign.end,
-                    style: GoogleFonts.cairo(
-                      fontSize:   15.5.sp,
-                      fontWeight: FontWeight.w400,
-                      color:      AppColors.text,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
         ),
       ),
     );
@@ -675,6 +660,8 @@ List<Widget> _socialIcons(
 }
 
 /// ✅ same visibility filter for mobile
+// Kept for the raw icon style; not used by the single responsive footer.
+// ignore: unused_element
 List<Widget> _socialIconsRaw(List<SocialLinkModel> links, Color borderColor) {
   return links
       .where((l) => l.visibility && (l.iconUrl.isNotEmpty || l.url.isNotEmpty))
@@ -702,9 +689,12 @@ class _SocialIconWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Widget iconWidget = link.iconUrl.isNotEmpty
+    final Widget iconWidget = link.iconUrl.isNotEmpty &&
+            !SvgPreload.isBad(link.iconUrl)
         ? SvgPicture.network(
       link.iconUrl,
+      errorBuilder: (_, __, ___) =>
+          Icon(Icons.link, size: _ic, color: borderColor),
       width:  20.w,
       height: 20.w,
       fit:    BoxFit.contain,

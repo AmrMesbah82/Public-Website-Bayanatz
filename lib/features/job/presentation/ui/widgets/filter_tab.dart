@@ -54,7 +54,7 @@ class _FilterTabState extends State<_FilterTab> {
               maxLines: 1,
               softWrap: false,
               style: StyleText.fontSize13Weight600.copyWith(
-                fontSize: phone ? 14 : 24.sp,
+                fontSize: phone ? 12 : 22.sp,
                 height: 1.5,
                 fontWeight: FontWeight.w400,
                 color: widget.isSelected
